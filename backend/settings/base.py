@@ -18,7 +18,6 @@ INSTALLED_APPS = [
     'rest_framework',
     'corsheaders',
     # Local apps
-    "apps.users",
     "apps.reservations",
     "apps.salas",
 ]

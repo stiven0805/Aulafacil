@@ -7,11 +7,14 @@ from .models import Reservation
 
 
 class ReservationSerializer(serializers.ModelSerializer):
+    sala_nombre = serializers.CharField(source='sala.nombre', read_only=True)
+
     class Meta:
         model = Reservation
         fields = (
             "id",
             "sala",
+            "sala_nombre",
             "user",
             "start_datetime",
             "end_datetime",
