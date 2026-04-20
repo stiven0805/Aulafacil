@@ -1,12 +1,12 @@
-from .base import *
-
+ALLOWED_HOSTS = ['*']
 DEBUG = True
-
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'aulafacil_db',
+        'USER': 'postgres',
+        'PASSWORD': 'TU_PASSWORD',
+        'HOST': 'localhost',
+        'PORT': '5432',
     }
 }
-
-CORS_ALLOW_ALL_ORIGINS = True
