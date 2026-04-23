@@ -3,6 +3,7 @@ from django.utils import timezone
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
+from rest_framework.permissions import AllowAny
 
 from .models import Reservation
 from .serializers import ReservationSerializer
@@ -10,11 +11,11 @@ from .serializers import ReservationSerializer
 
 class ReservationViewSet(viewsets.ModelViewSet):
     serializer_class = ReservationSerializer
+    permission_classes = [AllowAny]  # Temporalmente sin autenticación
 
     def get_queryset(self):
-        return Reservation.objects.filter(
-            user=self.request.user
-        )
+        # Por ahora devolver todas las reservas, sin filtrar por usuario
+        return Reservation.objects.all()
 
     def perform_create(self, serializer):
         serializer.save()

@@ -18,8 +18,8 @@ INSTALLED_APPS = [
     'rest_framework',
     'corsheaders',
     # Local apps
-    "apps.reservations",
-    "apps.salas",
+    'apps.reservations',
+    'apps.salas',
 ]
 
 MIDDLEWARE = [
@@ -69,7 +69,7 @@ REST_FRAMEWORK = {
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ),
     'DEFAULT_PERMISSION_CLASSES': (
-        'rest_framework.permissions.IsAuthenticated',
+        'rest_framework.permissions.AllowAny',  # Temporalmente sin autenticación
     ),
 }
 
