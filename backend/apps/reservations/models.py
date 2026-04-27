@@ -35,15 +35,15 @@ class Reservation(models.Model):
         ]
 
     def clean(self):
-        # Duración exacta de 2 horas
+        # 🔥 Duración exacta de 2 horas
         if self.end_datetime - self.start_datetime != timedelta(hours=2):
             raise ValidationError("La reserva debe durar exactamente 2 horas")
 
-        # No permitir reservas en el pasado
+        # 🔥 No permitir pasado
         if self.start_datetime < timezone.now():
             raise ValidationError("No se puede reservar en el pasado")
 
-        # No permitir solapamientos
+        # 🔥 Validación de solapamiento
         overlapping = Reservation.objects.filter(
             sala=self.sala,
             is_active=True,
@@ -53,6 +53,11 @@ class Reservation(models.Model):
 
         if overlapping.exists():
             raise ValidationError("La sala ya está ocupada en ese horario")
+
+    # 🔥 CLAVE: esto hace que DRF respete clean()
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, **kwargs)
 
     def cancel(self):
         now = timezone.now()
