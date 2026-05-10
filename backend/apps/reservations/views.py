@@ -1,5 +1,7 @@
 from django.core.exceptions import ValidationError
 from django.utils import timezone
+from django.utils.dateparse import parse_datetime
+
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -7,50 +9,57 @@ from rest_framework.permissions import IsAuthenticated
 
 from .models import Reservation
 from .serializers import ReservationSerializer
+from apps.salas.models import Sala
 
 
 class ReservationViewSet(viewsets.ModelViewSet):
     queryset = Reservation.objects.all()
     serializer_class = ReservationSerializer
-    permission_classes = [IsAuthenticated]  # 🔐 ahora requiere login
+    permission_classes = [IsAuthenticated]
 
     def perform_create(self, serializer):
-        # 🔥 usuario real desde el token
         serializer.save(user=self.request.user)
 
-    @action(detail=True, methods=["post"])
-    def cancel(self, request, pk=None):
-        reservation = self.get_object()
+    # 🔥 👇 AQUÍ ADENTRO
+    @action(detail=False, methods=["get"])
+    def aulas_disponibles(self, request):
+        start = request.GET.get("start")
+        end = request.GET.get("end")
 
-        try:
-            reservation.cancel()
-        except ValidationError as e:
+        if not start or not end:
             return Response(
-                {"detail": str(e)},
+                {"detail": "Faltan parámetros start y end"},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        return Response(
-            {"detail": "Reserva cancelada correctamente"},
-            status=status.HTTP_200_OK
-        )
+        start_dt = parse_datetime(start)
+        end_dt = parse_datetime(end)
 
-    @action(detail=False, methods=["get"])
-    def current_week(self, request):
-        now = timezone.now()
-        start_week = now - timezone.timedelta(days=now.weekday())
-        end_week = start_week + timezone.timedelta(days=7)
+        if not start_dt or not end_dt:
+            return Response(
+                {"detail": "Formato de fecha inválido"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
-        reservations = Reservation.objects.filter(
-            user=request.user,  # 🔥 solo tus reservas
-            start_datetime__gte=start_week,
-            start_datetime__lt=end_week,
+        reservas = Reservation.objects.filter(
+            start_datetime__lt=end_dt,
+            end_datetime__gt=start_dt,
             is_active=True
         )
 
-        serializer = self.get_serializer(reservations, many=True)
-        return Response(serializer.data)
+        salas_ocupadas = reservas.values_list("sala_id", flat=True)
 
-    def get_queryset(self):
-        # 🔐 solo devuelve reservas del usuario autenticado
-        return Reservation.objects.filter(user=self.request.user)
+        salas = Sala.objects.filter(activa=True).exclude(id__in=salas_ocupadas)
+
+        data = [
+            {
+                "id": s.id,
+                "nombre": s.nombre,
+                "capacidad": s.capacidad,
+                "activa": s.activa
+            }
+            for s in salas
+        ]
+
+        return Response(data)
+    
