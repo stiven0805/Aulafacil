@@ -1,24 +1,46 @@
-import axios from 'axios'
+import axios from "axios";
 
-const API_URL = import.meta.env.VITE_API_URL
+const API_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000/api";
 
+// instancia central
 const api = axios.create({
   baseURL: API_URL,
   headers: {
-    'Content-Type': 'application/json',
+    "Content-Type": "application/json",
   },
-})
+});
 
-// Interceptor para agregar token si es necesario
+// interceptor JWT
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('token')
+    const token = localStorage.getItem("token");
     if (token) {
-      config.headers.Authorization = `Bearer ${token}`
+      config.headers.Authorization = `Bearer ${token}`;
     }
-    return config
+    return config;
   },
   (error) => Promise.reject(error)
-)
+);
 
-export default api
+// =========================
+// 🔵 AULAS
+// =========================
+export const getAulas = () => api.get("/salas/");
+
+export const toggleAula = (id, activa) =>
+  api.patch(`/salas/${id}/`, { activa });
+
+// =========================
+// 🟣 RESERVAS
+// =========================
+export const getReservas = () => api.get("/reservations/");
+
+// =========================
+// 🟡 USUARIOS
+// =========================
+export const getUsers = () => api.get("/users/");
+
+// =========================
+// 🔥 EXPORT BASE
+// =========================
+export default api;
