@@ -23,6 +23,8 @@ def health_check(request):
 
 router = DefaultRouter()
 
+from apps.reservations.views import RegisterView
+
 urlpatterns = [
     # ✅ ROOT (ya no 404)
     path("", home),
@@ -43,4 +45,5 @@ urlpatterns = [
     # ✅ JWT
     path("api/token/", TokenObtainPairView.as_view(), name="token_obtain_pair"),
     path("api/token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
+    path("api/register/", RegisterView.as_view(), name="register"),
 ]

@@ -1,6 +1,0 @@
-export { Home } from './Home'
-export { Aulas } from './Aulas'
-export { Calendar } from './Calendar'
-export { Reserve } from './Reserve'
-export { History } from './History'
-export { Notifications } from './Notifications'

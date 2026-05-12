@@ -12,6 +12,44 @@ from .serializers import ReservationSerializer
 from apps.salas.models import Sala
 
 
+from rest_framework import status, viewsets, permissions
+from rest_framework.views import APIView
+from django.contrib.auth.models import User
+
+from django.views.decorators.csrf import csrf_exempt
+from django.utils.decorators import method_decorator
+
+@method_decorator(csrf_exempt, name='dispatch')
+class RegisterView(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request):
+        print(f"--- NUEVO INTENTO DE REGISTRO ---")
+        print(f"Data recibida: {request.data}")
+        
+        username = request.data.get('email') # Use email as username
+        email = request.data.get('email')
+        password = request.data.get('password')
+        name = request.data.get('name')
+
+        if not username or not password:
+            print("Error: Email o password faltantes")
+            return Response({'detail': 'Email and password are required'}, status=status.HTTP_400_BAD_REQUEST)
+
+        if User.objects.filter(username=username).exists():
+            print(f"Error: El usuario {username} ya existe")
+            return Response({'detail': 'User already exists'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            user = User.objects.create_user(username=username, email=email, password=password)
+            user.first_name = name
+            user.save()
+            print(f"ÉXITO: Usuario {username} creado.")
+            return Response({'message': 'User created successfully'}, status=status.HTTP_201_CREATED)
+        except Exception as e:
+            print(f"ERROR FATAL en create_user: {str(e)}")
+            return Response({'detail': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 class ReservationViewSet(viewsets.ModelViewSet):
     queryset = Reservation.objects.all()
     serializer_class = ReservationSerializer

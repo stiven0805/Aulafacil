@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test API</title>
+</head>
+<body>
+    <h1>Test Registro</h1>
+    <button onclick="testRegister()">Probar Registro</button>
+    <pre id="result"></pre>
+
+    <script>
+        async function testRegister() {
+            const result = document.getElementById('result');
+            result.innerText = 'Probando...';
+            try {
+                const response = await fetch('http://127.0.0.1:8000/api/register/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        email: 'test' + Date.now() + '@test.com',
+                        password: 'password123',
+                        name: 'Test User'
+                    })
+                });
+                const data = await response.json();
+                result.innerText = JSON.stringify(data, null, 2);
+            } catch (err) {
+                result.innerText = 'Error: ' + err.message;
+            }
+        }
+    </script>
+</body>
+</html>
