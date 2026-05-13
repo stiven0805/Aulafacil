@@ -50,7 +50,6 @@ export function ReservationHistory() {
     cargarReservas();
   }, []);
 
-<<<<<<< HEAD
   const cargarReservas = async () => {
     const currentUser = getCurrentUser();
     if (!currentUser) return;
@@ -80,22 +79,6 @@ export function ReservationHistory() {
     } catch (err: any) {
       console.error(err);
       toast.error(err.response?.data?.detail || 'No se pudo cancelar la reserva.');
-=======
-  const cargarReservas = () => {
-    const currentUser = getCurrentUser();
-    if (currentUser) {
-      const userReservations = getUserReservations(currentUser.id);
-      userReservations.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-      setReservations(userReservations);
-    }
-  };
-
-  const handleCancelar = (id: string) => {
-    if (confirm('¿Estás seguro de que deseas cancelar esta reserva?')) {
-      cancelReservation(id);
-      cargarReservas();
-      toast.success('Reserva cancelada exitosamente');
->>>>>>> 2222813dfdb7e8e71116172a75bbfe029d891962
     }
   };
 

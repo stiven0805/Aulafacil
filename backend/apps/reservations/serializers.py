@@ -77,7 +77,7 @@ class ReservationSerializer(serializers.ModelSerializer):
             'id', 'sala', 'classroomName', 'userId', 'userName',
             'faculty', 'numberOfPeople', 'date', 'startTime', 'endTime',
             'duration', 'status', 'created_at', 'cancelled_at',
-            'is_active', 'notified',
+            'is_active', 'notified', 'start_datetime', 'end_datetime',
         ]
         read_only_fields = ['created_at', 'cancelled_at', 'is_active', 'notified']
 

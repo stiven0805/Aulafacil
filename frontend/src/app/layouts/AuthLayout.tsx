@@ -12,7 +12,7 @@ export function AuthLayout() {
             </div>
           </div>
           <h1 className="text-3xl font-bold text-gray-900">AulaFácil</h1>
-          <p className="text-gray-600 mt-2">University Classroom Reservation System</p>
+          <p className="text-gray-600 mt-2">Sistema de Reserva de Aulas Universitarias</p>
         </div>
         <Outlet />
       </div>

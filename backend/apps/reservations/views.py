@@ -155,4 +155,21 @@ class ReservationViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
+class UserViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = User.objects.all()
+    permission_classes = [IsAuthenticated]
+    
+    def list(self, request, *args, **kwargs):
+        users = self.get_queryset()
+        data = []
+        for u in users:
+            data.append({
+                'id': str(u.id),
+                'name': u.first_name or u.username,
+                'email': u.email or u.username,
+                'role': 'admin' if 'admin' in u.username else 'student',
+                'blocked': not u.is_active,
+                'faculty': 'General',
+            })
+        return Response(data)
     

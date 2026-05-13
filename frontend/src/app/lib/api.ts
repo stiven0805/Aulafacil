@@ -38,6 +38,10 @@ export const reservationsApi = {
   getUserReservations: () => api.get('reservations/me/'),
 };
 
+export const usersApi = {
+  getAll: () => api.get('users/'),
+};
+
 export const mapReservationFromApi = (reservation: any) => ({
   id: String(reservation.id),
   classroomId: String(reservation.sala),

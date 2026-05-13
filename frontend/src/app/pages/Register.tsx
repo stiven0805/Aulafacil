@@ -207,19 +207,13 @@ export function Register() {
         studentId: form.studentId.trim(),
       });
       setSuccess(true);
-<<<<<<< HEAD
       toast.success('Registro exitoso. Redirigiendo al inicio de sesión...');
-=======
->>>>>>> 2222813dfdb7e8e71116172a75bbfe029d891962
       setTimeout(() => navigate('/login'), 1500); // Redirigir al login después de registrarse
     } catch (err: any) {
       console.error(err);
       const msg = err.response?.data?.detail || err.message || 'Error de conexión con el servidor.';
       setErrors({ submit: msg });
-<<<<<<< HEAD
       toast.error(msg);
-=======
->>>>>>> 2222813dfdb7e8e71116172a75bbfe029d891962
     } finally {
       setLoading(false);
     }
@@ -228,15 +222,8 @@ export function Register() {
   // ─────────────────────────────────────────────────────────────────────────
 
   return (
-    <div className="w-full">
-      {/* Header */}
-      <div className="text-center mb-6">
-        <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-[#2563eb] mb-4 shadow-lg shadow-blue-200">
-          <BookOpen className="w-7 h-7 text-white" />
-        </div>
-        <h1 className="font-bold text-gray-900" style={{ fontSize: '1.5rem' }}>Crear cuenta</h1>
-        <p className="text-sm text-gray-500 mt-1">Regístrate para reservar aulas universitarias</p>
-      </div>
+    <div className="w-full bg-white p-8 rounded-2xl shadow-sm border border-gray-100">
+      <h2 className="text-xl font-bold text-gray-800 mb-6 text-center">Crear cuenta</h2>
 
       {/* Success */}
       {success && (

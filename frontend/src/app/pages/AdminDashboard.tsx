@@ -2,16 +2,15 @@ import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
-import { classrooms } from '../lib/mockData';
 import {
-  getReservations,
   cancelReservation,
   getClassroomStates,
   setClassroomDisabled,
-  getAllUsers,
   blockUser,
 } from '../lib/storage';
-import { Reservation, User } from '../types';
+import { salasApi, reservationsApi, usersApi, mapReservationFromApi } from '../lib/api';
+import { toast } from 'sonner';
+import { Reservation, User, Classroom } from '../types';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, PieChart, Pie, Cell, Legend,
@@ -139,9 +138,17 @@ export function AdminDashboard() {
     confirmLabel: string; confirmClass?: string; action: () => void;
   }>({ open: false, title: '', message: '', confirmLabel: '', action: () => {} });
 
+  const [classrooms, setClassrooms] = useState<Classroom[]>([]);
+
   const reload = useCallback(() => {
-    setReservations(getReservations());
-    setUsers(getAllUsers());
+    reservationsApi.getAll().then(res => setReservations(res.data.map(mapReservationFromApi)));
+    usersApi.getAll().then(res => setUsers(res.data));
+    salasApi.getAll().then(res => {
+      const rooms = res.data.map((r: any) => ({
+        id: String(r.id), name: r.nombre, capacity: r.capacidad, hasTV: false, hasWhiteboard: false, status: r.activa ? 'available' : 'disabled'
+      }));
+      setClassrooms(rooms);
+    });
     setClassroomStates(getClassroomStates());
   }, []);
 
@@ -152,7 +159,7 @@ export function AdminDashboard() {
   const activeReservations = reservations.filter(r => r.status === 'active');
   const uniqueUsers = new Set(reservations.map(r => r.userId)).size;
   const totalHours = reservations.reduce((s, r) => s + r.duration, 0);
-  const occupancy = Math.round((totalHours / (classrooms.length * 10 * 30)) * 100);
+  const occupancy = classrooms.length > 0 ? Math.round((totalHours / (classrooms.length * 10 * 30)) * 100) : 0;
 
   const classroomUsageData = classrooms.map(cls => ({
     name: cls.name,
@@ -208,10 +215,15 @@ export function AdminDashboard() {
       title: 'Cancelar reserva',
       message: `¿Cancelar la reserva de ${res.userName} en ${res.classroomName} el ${res.date} de ${res.startTime} a ${res.endTime}?`,
       confirmLabel: 'Sí, cancelar',
-      action: () => {
-        cancelReservation(res.id);
-        reload();
-        closeConfirm();
+      action: async () => {
+        try {
+          await reservationsApi.cancel(res.id);
+          toast.success("Reserva cancelada exitosamente");
+          reload();
+          closeConfirm();
+        } catch (err) {
+          toast.error("Error al cancelar la reserva");
+        }
       },
     });
   }

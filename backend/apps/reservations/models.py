@@ -36,9 +36,10 @@ class Reservation(models.Model):
         ]
 
     def clean(self):
-        # 🔥 Duración exacta de 2 horas
-        if self.end_datetime - self.start_datetime != timedelta(hours=2):
-            raise ValidationError("La reserva debe durar exactamente 2 horas")
+        # 🔥 Duración entre 1 y 4 horas
+        duration = self.end_datetime - self.start_datetime
+        if duration < timedelta(hours=1) or duration > timedelta(hours=4):
+            raise ValidationError("La reserva debe durar entre 1 y 4 horas")
 
         # 🔥 No permitir pasado
         if self.start_datetime < timezone.now():

@@ -35,14 +35,6 @@ export function StudentDashboard() {
     cargarReservas();
   }, []);
 
-      setActiveReservations(active);
-      const all = getUserReservations(currentUser.id);
-      setTotalReservations(all.length);
-      setTotalHours(active.reduce((sum: number, r: any) => sum + r.duration, 0));
-    }
->>>>>>> 2222813dfdb7e8e71116172a75bbfe029d891962
-  }, []);
-
   const getSaludo = () => {
     const hour = new Date().getHours();
     if (hour < 12) return 'Buenos días';

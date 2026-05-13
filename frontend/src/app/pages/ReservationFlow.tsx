@@ -65,12 +65,9 @@ export function ReservationFlow() {
     faculty: user?.faculty || "",
     numberOfPeople: "",
   });
-<<<<<<< HEAD
   const [classrooms, setClassrooms] = useState<Classroom[]>(mockClassrooms);
   const [loading, setLoading] = useState(false);
   const [submitError, setSubmitError] = useState('');
-=======
->>>>>>> 2222813dfdb7e8e71116172a75bbfe029d891962
 
   const [errors, setErrors] = useState<Record<string, string>>(
     {},
@@ -85,8 +82,6 @@ export function ReservationFlow() {
         faculty: currentUser.faculty,
       }));
     }
-<<<<<<< HEAD
-
     salasApi.getAll()
       .then((response) => {
         const rooms = response.data.map((room: any) => ({
@@ -102,8 +97,6 @@ export function ReservationFlow() {
       .catch(() => {
         setClassrooms(mockClassrooms);
       });
-=======
->>>>>>> 2222813dfdb7e8e71116172a75bbfe029d891962
   }, []);
 
   const calculateDuration = () => {
@@ -187,23 +180,7 @@ export function ReservationFlow() {
           }
         }
 
-<<<<<<< HEAD
-=======
-        // Check availability
-        if (
-          formData.classroomId &&
-          formData.date &&
-          !isClassroomAvailable(
-            formData.classroomId,
-            formData.date,
-            formData.startTime,
-            formData.endTime,
-          )
-        ) {
-          newErrors.availability =
-            "Este horario ya está reservado para el aula seleccionada";
-        }
->>>>>>> 2222813dfdb7e8e71116172a75bbfe029d891962
+
       }
     }
 
@@ -244,11 +221,7 @@ export function ReservationFlow() {
     }
   };
 
-<<<<<<< HEAD
   const handleSubmit = async () => {
-=======
-  const handleSubmit = () => {
->>>>>>> 2222813dfdb7e8e71116172a75bbfe029d891962
     if (!validateStep(4) || !user) return;
 
     const classroom = classrooms.find(
@@ -256,7 +229,6 @@ export function ReservationFlow() {
     );
     if (!classroom) return;
 
-<<<<<<< HEAD
     setLoading(true);
     setSubmitError('');
 
@@ -294,32 +266,6 @@ export function ReservationFlow() {
     } finally {
       setLoading(false);
     }
-=======
-    const reservation = addReservation({
-      classroomId: formData.classroomId,
-      classroomName: classroom.name,
-      userId: user.id,
-      userName: user.name,
-      faculty: formData.faculty,
-      numberOfPeople: parseInt(formData.numberOfPeople),
-      date: formData.date,
-      startTime: formData.startTime,
-      endTime: formData.endTime,
-      duration: calculateDuration(),
-      status: "active",
-    });
-
-    // Add notification
-    addNotification({
-      userId: user.id,
-      title: "Reserva Confirmada",
-      message: `Tu reserva para ${classroom.name} el ${formData.date} ha sido confirmada.`,
-      type: "success",
-      read: false,
-    });
-
-    setShowRulesModal(true);
->>>>>>> 2222813dfdb7e8e71116172a75bbfe029d891962
   };
 
   const handleModalClose = () => {
@@ -335,10 +281,10 @@ export function ReservationFlow() {
     <div className="max-w-4xl mx-auto space-y-6">
       <div>
         <h1 className="text-3xl font-bold text-gray-900 mb-2">
-          Reserve a Classroom
+          Reservar un Aula
         </h1>
         <p className="text-gray-600">
-          Complete the steps below to make your reservation
+          Completa los siguientes pasos para realizar tu reserva
         </p>
       </div>
 
@@ -376,20 +322,20 @@ export function ReservationFlow() {
       <Card>
         <CardHeader>
           <CardTitle>
-            {currentStep === 1 && "Step 1: Select Classroom"}
-            {currentStep === 2 && "Step 2: Select Date & Time"}
-            {currentStep === 3 && "Step 3: Enter Details"}
-            {currentStep === 4 && "Step 4: Review & Confirm"}
+            {currentStep === 1 && "Paso 1: Seleccionar Aula"}
+            {currentStep === 2 && "Paso 2: Seleccionar Fecha y Hora"}
+            {currentStep === 3 && "Paso 3: Ingresar Detalles"}
+            {currentStep === 4 && "Paso 4: Revisar y Confirmar"}
           </CardTitle>
           <CardDescription>
             {currentStep === 1 &&
-              "Choose the classroom you want to reserve"}
+              "Elige el aula que deseas reservar"}
             {currentStep === 2 &&
-              "Pick your preferred date and time (max 4 hours)"}
+              "Elige tu fecha y hora preferida (máx 4 horas)"}
             {currentStep === 3 &&
-              "Provide your faculty and group size"}
+              "Proporciona tu facultad y tamaño del grupo"}
             {currentStep === 4 &&
-              "Review your reservation details"}
+              "Revisa los detalles de tu reserva"}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -689,7 +635,7 @@ export function ReservationFlow() {
                   </p>
                 )}
                 <p className="text-xs text-gray-500">
-                  Maximum capacity: 12 people
+                  Capacidad máxima: 12 personas
                 </p>
               </div>
             </div>
@@ -702,7 +648,7 @@ export function ReservationFlow() {
                 <div className="space-y-3">
                   <div>
                     <p className="text-sm text-gray-600">
-                      Classroom
+                      Aula
                     </p>
                     <p className="font-semibold text-lg">
                       {selectedClassroom?.name}
@@ -710,7 +656,7 @@ export function ReservationFlow() {
                   </div>
                   <div>
                     <p className="text-sm text-gray-600">
-                      Date
+                      Fecha
                     </p>
                     <p className="font-semibold">
                       {new Date(
@@ -725,18 +671,18 @@ export function ReservationFlow() {
                   </div>
                   <div>
                     <p className="text-sm text-gray-600">
-                      Time
+                      Hora
                     </p>
                     <p className="font-semibold">
                       {formData.startTime} - {formData.endTime}{" "}
-                      ({calculateDuration()} hours)
+                      ({calculateDuration()} horas)
                     </p>
                   </div>
                 </div>
                 <div className="space-y-3">
                   <div>
                     <p className="text-sm text-gray-600">
-                      Faculty
+                      Facultad
                     </p>
                     <p className="font-semibold">
                       {formData.faculty}
@@ -744,15 +690,15 @@ export function ReservationFlow() {
                   </div>
                   <div>
                     <p className="text-sm text-gray-600">
-                      Number of People
+                      Número de personas
                     </p>
                     <p className="font-semibold">
-                      {formData.numberOfPeople} people
+                      {formData.numberOfPeople} personas
                     </p>
                   </div>
                   <div>
                     <p className="text-sm text-gray-600">
-                      Reserved by
+                      Reservado por
                     </p>
                     <p className="font-semibold">
                       {user?.name}
@@ -764,21 +710,17 @@ export function ReservationFlow() {
               <Alert>
                 <AlertCircle className="h-4 w-4" />
                 <AlertDescription>
-                  Please review your reservation details
-                  carefully before confirming.
+                  Por favor revisa cuidadosamente los detalles de tu reserva antes de confirmar.
                 </AlertDescription>
               </Alert>
             </div>
           )}
 
-<<<<<<< HEAD
           {submitError && (
             <div className="rounded-xl bg-red-50 border border-red-200 p-4 text-sm text-red-700">
               {submitError}
             </div>
           )}
-=======
->>>>>>> 2222813dfdb7e8e71116172a75bbfe029d891962
           {/* Navigation Buttons */}
           <div className="flex items-center justify-between pt-6 border-t">
             <Button
@@ -787,7 +729,7 @@ export function ReservationFlow() {
               disabled={currentStep === 1}
             >
               <ArrowLeft className="w-4 h-4 mr-2" />
-              Previous
+              Atrás
             </Button>
 
             {currentStep < 4 ? (
@@ -795,23 +737,17 @@ export function ReservationFlow() {
                 onClick={nextStep}
                 className="bg-[#2563eb] hover:bg-[#1d4ed8]"
               >
-                Next
+                Siguiente
                 <ArrowRight className="w-4 h-4 ml-2" />
               </Button>
             ) : (
               <Button
                 onClick={handleSubmit}
                 className="bg-green-600 hover:bg-green-700"
-<<<<<<< HEAD
                 disabled={loading}
               >
                 <Check className="w-4 h-4 mr-2" />
-                {loading ? 'Confirmando...' : 'Confirm Reservation'}
-=======
-              >
-                <Check className="w-4 h-4 mr-2" />
-                Confirm Reservation
->>>>>>> 2222813dfdb7e8e71116172a75bbfe029d891962
+                {loading ? 'Confirmando...' : 'Confirmar Reserva'}
               </Button>
             )}
           </div>

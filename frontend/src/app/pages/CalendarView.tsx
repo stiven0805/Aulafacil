@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, CalendarDays, Info, Lock, CheckCircle2, XCircle, Clock } from 'lucide-react';
-import { classrooms } from '../lib/mockData';
-import { getReservations } from '../lib/storage';
+import { salasApi, reservationsApi, mapReservationFromApi } from '../lib/api';
 import {
   isBlockedDay,
   isSunday,
@@ -168,8 +167,8 @@ function MonthCalendar({
 // ─── Day schedule panel ──────────────────────────────────────────────────────
 
 function DaySchedule({
-  date, reservations,
-}: { date: Date; reservations: Reservation[] }) {
+  date, reservations, classrooms,
+}: { date: Date; reservations: Reservation[]; classrooms: any[] }) {
   const blocked = isBlockedDay(date);
   const slots = getTimeSlotsForDate(date);
   const holiday = isHoliday(date);
@@ -375,9 +374,9 @@ function DaySchedule({
 // ─── Week overview strip ─────────────────────────────────────────────────────
 
 function WeekStrip({
-  baseDate, selectedDate, reservations, onSelectDate,
+  baseDate, selectedDate, reservations, classrooms, onSelectDate,
 }: {
-  baseDate: Date; selectedDate: Date; reservations: Reservation[];
+  baseDate: Date; selectedDate: Date; reservations: Reservation[]; classrooms: any[];
   onSelectDate: (d: Date) => void;
 }) {
   // Build Mon–Sun of the week containing baseDate
@@ -490,9 +489,28 @@ export function CalendarView() {
   const [calYear, setCalYear] = useState(today.getFullYear());
   const [calMonth, setCalMonth] = useState(today.getMonth());
   const [reservations, setReservations] = useState<Reservation[]>([]);
+  const [classrooms, setClassrooms] = useState<any[]>([]);
 
   useEffect(() => {
-    setReservations(getReservations());
+    // Fetch aulas
+    salasApi.getAll()
+      .then((res) => {
+        const rooms = res.data.map((room: any) => ({
+          id: String(room.id),
+          name: room.nombre,
+          hasWhiteboard: false,
+          capacity: room.capacidad || 0,
+        }));
+        setClassrooms(rooms);
+      })
+      .catch((err) => console.error("Error fetching classrooms", err));
+
+    // Fetch reservas
+    reservationsApi.getAll()
+      .then((res) => {
+        setReservations(res.data.map(mapReservationFromApi));
+      })
+      .catch((err) => console.error("Error fetching reservations", err));
   }, []);
 
   function prevMonth() {
@@ -544,6 +562,7 @@ export function CalendarView() {
         baseDate={selectedDate}
         selectedDate={selectedDate}
         reservations={reservations}
+        classrooms={classrooms}
         onSelectDate={handleSelectDate}
       />
 
@@ -564,6 +583,7 @@ export function CalendarView() {
         <DaySchedule
           date={selectedDate}
           reservations={reservations}
+          classrooms={classrooms}
         />
       </div>
     </div>

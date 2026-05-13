@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
-import { classrooms } from '../lib/mockData';
-import { getReservations, getClassroomStates } from '../lib/storage';
+import { salasApi, reservationsApi, mapReservationFromApi } from '../lib/api';
+import { getClassroomStates } from '../lib/storage';
 import { ClassroomCard } from '../components/ClassroomCard';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Classroom } from '../types';
@@ -12,29 +12,43 @@ export function ClassroomOverview() {
   const [classroomStatus, setClassroomStatus] = useState<Classroom[]>([]);
 
   useEffect(() => {
-    const now = new Date();
-    const today = now.toISOString().split('T')[0];
-    const currentHour = now.getHours();
-    const currentTime = `${currentHour.toString().padStart(2, '0')}:00`;
+    const fetchData = async () => {
+      try {
+        const [salasRes, resRes] = await Promise.all([
+          salasApi.getAll(),
+          reservationsApi.getAll()
+        ]);
+        
+        const now = new Date();
+        const today = now.toISOString().split('T')[0];
+        const currentHour = now.getHours();
+        const currentTime = `${currentHour.toString().padStart(2, '0')}:00`;
+        const disabledStates = getClassroomStates();
+        const reservations = resRes.data.map(mapReservationFromApi);
 
-    const disabledStates = getClassroomStates();
+        const updatedClassrooms = salasRes.data.map((r: any) => {
+          const classroom = {
+            id: String(r.id), name: r.nombre, capacity: r.capacidad, hasTV: false, hasWhiteboard: false, status: r.activa ? 'available' : 'disabled'
+          };
+          if (disabledStates[classroom.id]) {
+            return { ...classroom, status: 'disabled' as const };
+          }
+          const isOccupied = reservations.some((res: any) =>
+            res.classroomId === classroom.id &&
+            res.date === today &&
+            res.status === 'active' &&
+            currentTime >= res.startTime &&
+            currentTime < res.endTime
+          );
+          return { ...classroom, status: isOccupied ? 'occupied' as const : 'available' as const };
+        });
 
-    const updatedClassrooms = classrooms.map(classroom => {
-      if (disabledStates[classroom.id]) {
-        return { ...classroom, status: 'disabled' as const };
+        setClassroomStatus(updatedClassrooms);
+      } catch (e) {
+        console.error(e);
       }
-      const reservations = getReservations();
-      const isOccupied = reservations.some(r =>
-        r.classroomId === classroom.id &&
-        r.date === today &&
-        r.status === 'active' &&
-        currentTime >= r.startTime &&
-        currentTime < r.endTime
-      );
-      return { ...classroom, status: isOccupied ? 'occupied' as const : 'available' as const };
-    });
-
-    setClassroomStatus(updatedClassrooms);
+    };
+    fetchData();
   }, []);
 
   const handleAulaClick = (classroomId: string) => {
@@ -62,7 +76,7 @@ export function ClassroomOverview() {
           <CardContent className="pt-5 pb-4">
             <div className="text-center">
               <p className="text-xs text-gray-400 uppercase tracking-wide font-semibold mb-1">Total aulas</p>
-              <p className="text-3xl font-bold text-gray-900">{classrooms.length}</p>
+              <p className="text-3xl font-bold text-gray-900">{classroomStatus.length}</p>
             </div>
           </CardContent>
         </Card>
