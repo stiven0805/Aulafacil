@@ -29,7 +29,6 @@ class Reservation(models.Model):
     faculty = models.CharField(max_length=120, blank=True, default='')
     number_of_people = models.PositiveSmallIntegerField(default=1)
 
-
     class Meta:
         ordering = ["start_datetime"]
         indexes = [

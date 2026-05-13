@@ -53,3 +53,4 @@ export const mapReservationFromApi = (reservation: any) => ({
   status: reservation.status || 'active',
   createdAt: reservation.created_at || new Date().toISOString(),
 });
+

@@ -80,3 +80,4 @@ class ReservationSerializer(serializers.ModelSerializer):
             'is_active', 'notified',
         ]
         read_only_fields = ['created_at', 'cancelled_at', 'is_active', 'notified']
+

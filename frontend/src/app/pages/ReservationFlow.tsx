@@ -65,9 +65,12 @@ export function ReservationFlow() {
     faculty: user?.faculty || "",
     numberOfPeople: "",
   });
+<<<<<<< HEAD
   const [classrooms, setClassrooms] = useState<Classroom[]>(mockClassrooms);
   const [loading, setLoading] = useState(false);
   const [submitError, setSubmitError] = useState('');
+=======
+>>>>>>> 2222813dfdb7e8e71116172a75bbfe029d891962
 
   const [errors, setErrors] = useState<Record<string, string>>(
     {},
@@ -82,6 +85,7 @@ export function ReservationFlow() {
         faculty: currentUser.faculty,
       }));
     }
+<<<<<<< HEAD
 
     salasApi.getAll()
       .then((response) => {
@@ -98,6 +102,8 @@ export function ReservationFlow() {
       .catch(() => {
         setClassrooms(mockClassrooms);
       });
+=======
+>>>>>>> 2222813dfdb7e8e71116172a75bbfe029d891962
   }, []);
 
   const calculateDuration = () => {
@@ -181,6 +187,23 @@ export function ReservationFlow() {
           }
         }
 
+<<<<<<< HEAD
+=======
+        // Check availability
+        if (
+          formData.classroomId &&
+          formData.date &&
+          !isClassroomAvailable(
+            formData.classroomId,
+            formData.date,
+            formData.startTime,
+            formData.endTime,
+          )
+        ) {
+          newErrors.availability =
+            "Este horario ya está reservado para el aula seleccionada";
+        }
+>>>>>>> 2222813dfdb7e8e71116172a75bbfe029d891962
       }
     }
 
@@ -221,7 +244,11 @@ export function ReservationFlow() {
     }
   };
 
+<<<<<<< HEAD
   const handleSubmit = async () => {
+=======
+  const handleSubmit = () => {
+>>>>>>> 2222813dfdb7e8e71116172a75bbfe029d891962
     if (!validateStep(4) || !user) return;
 
     const classroom = classrooms.find(
@@ -229,6 +256,7 @@ export function ReservationFlow() {
     );
     if (!classroom) return;
 
+<<<<<<< HEAD
     setLoading(true);
     setSubmitError('');
 
@@ -266,6 +294,32 @@ export function ReservationFlow() {
     } finally {
       setLoading(false);
     }
+=======
+    const reservation = addReservation({
+      classroomId: formData.classroomId,
+      classroomName: classroom.name,
+      userId: user.id,
+      userName: user.name,
+      faculty: formData.faculty,
+      numberOfPeople: parseInt(formData.numberOfPeople),
+      date: formData.date,
+      startTime: formData.startTime,
+      endTime: formData.endTime,
+      duration: calculateDuration(),
+      status: "active",
+    });
+
+    // Add notification
+    addNotification({
+      userId: user.id,
+      title: "Reserva Confirmada",
+      message: `Tu reserva para ${classroom.name} el ${formData.date} ha sido confirmada.`,
+      type: "success",
+      read: false,
+    });
+
+    setShowRulesModal(true);
+>>>>>>> 2222813dfdb7e8e71116172a75bbfe029d891962
   };
 
   const handleModalClose = () => {
@@ -717,11 +771,14 @@ export function ReservationFlow() {
             </div>
           )}
 
+<<<<<<< HEAD
           {submitError && (
             <div className="rounded-xl bg-red-50 border border-red-200 p-4 text-sm text-red-700">
               {submitError}
             </div>
           )}
+=======
+>>>>>>> 2222813dfdb7e8e71116172a75bbfe029d891962
           {/* Navigation Buttons */}
           <div className="flex items-center justify-between pt-6 border-t">
             <Button
@@ -745,10 +802,16 @@ export function ReservationFlow() {
               <Button
                 onClick={handleSubmit}
                 className="bg-green-600 hover:bg-green-700"
+<<<<<<< HEAD
                 disabled={loading}
               >
                 <Check className="w-4 h-4 mr-2" />
                 {loading ? 'Confirmando...' : 'Confirm Reservation'}
+=======
+              >
+                <Check className="w-4 h-4 mr-2" />
+                Confirm Reservation
+>>>>>>> 2222813dfdb7e8e71116172a75bbfe029d891962
               </Button>
             )}
           </div>

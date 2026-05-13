@@ -207,13 +207,19 @@ export function Register() {
         studentId: form.studentId.trim(),
       });
       setSuccess(true);
+<<<<<<< HEAD
       toast.success('Registro exitoso. Redirigiendo al inicio de sesión...');
+=======
+>>>>>>> 2222813dfdb7e8e71116172a75bbfe029d891962
       setTimeout(() => navigate('/login'), 1500); // Redirigir al login después de registrarse
     } catch (err: any) {
       console.error(err);
       const msg = err.response?.data?.detail || err.message || 'Error de conexión con el servidor.';
       setErrors({ submit: msg });
+<<<<<<< HEAD
       toast.error(msg);
+=======
+>>>>>>> 2222813dfdb7e8e71116172a75bbfe029d891962
     } finally {
       setLoading(false);
     }
