@@ -138,7 +138,8 @@ class ReservationViewSet(viewsets.ModelViewSet):
                 "activa": s.activa
             }
             for s in salas
-        ]
+        ] 
+
 
         return Response(data)
 
@@ -154,6 +155,8 @@ class ReservationViewSet(viewsets.ModelViewSet):
                 {"detail": "No se pudo enviar el SMS."},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+
+
 
 class UserViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = User.objects.all()

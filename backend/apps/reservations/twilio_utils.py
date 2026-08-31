@@ -36,6 +36,8 @@ def send_sms(to: str, body: str) -> bool:
     logger.info('SMS enviado vía Twilio: %s', getattr(message, 'sid', 'unknown'))
     return True
 
+# Función específica para enviar SMS de reserva
+# se asume que reservation es una instancia del modelo Reservation con atributos sala, start_datetime y end_datetime
 
 def send_reservation_sms(reservation) -> bool:
     if not TWILIO_NOTIFICATION_RECIPIENT:

@@ -1,10 +1,10 @@
 import { Classroom, Reservation, User, Notification } from '../types';
 
 export const CLASSROOM_RULES = [
-  "No food allowed",
-  "No excessive noise",
-  "Take care of equipment (TV, whiteboard)",
-  "Respect reserved schedule"
+  "No está permitido comer",
+  "No hacer ruido excesivo",
+  "Cuida el equipo (TV, pizarrón)",
+  "Respeta el horario reservado"
 ];
 
 export const classrooms: Classroom[] = [
@@ -100,8 +100,8 @@ export const mockNotifications: Notification[] = [
   {
     id: '1',
     userId: '1',
-    title: 'Reservation Confirmed',
-    message: 'Your reservation for Aula 1 on March 22 has been confirmed.',
+    title: 'Reserva Confirmada',
+    message: 'Tu reserva para Aula 1 el 22 de marzo ha sido confirmada.',
     type: 'success',
     read: false,
     createdAt: '2026-03-20T08:30:00Z'
@@ -109,8 +109,8 @@ export const mockNotifications: Notification[] = [
   {
     id: '2',
     userId: '1',
-    title: 'Upcoming Reservation',
-    message: 'You have a reservation for Aula 1 tomorrow at 10:00 AM.',
+    title: 'Próxima Reserva',
+    message: 'Tienes una reserva para Aula 1 mañana a las 10:00 AM.',
     type: 'info',
     read: false,
     createdAt: '2026-03-21T09:00:00Z'

@@ -17,6 +17,7 @@ class ReservationSerializer(serializers.ModelSerializer):
     numberOfPeople = serializers.IntegerField(source='number_of_people')
     faculty = serializers.CharField(allow_blank=True)
 
+
     def validate(self, data):
         sala = data['sala']
         inicio = data['start_datetime']
@@ -29,6 +30,7 @@ class ReservationSerializer(serializers.ModelSerializer):
             )
 
         # 🔥 VALIDAR LÍMITE DE 2 SEMANAS
+
         now = timezone.now()
         limite = now + timedelta(days=14)
 
@@ -38,6 +40,7 @@ class ReservationSerializer(serializers.ModelSerializer):
             )
 
         # 🔥 VALIDAR CONFLICTOS
+
         conflictos = Reservation.objects.filter(
             sala=sala,
             start_datetime__lt=fin,

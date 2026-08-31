@@ -9,12 +9,20 @@ const api = axios.create({
   },
 });
 
+const PUBLIC_AUTH_PATHS = ['token/', 'token/refresh/', 'register/'];
+
 // Interceptor to add JWT token to requests
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('aulafacil_token');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
+  const requestUrl = String(config.url || '');
+  const isPublicAuthRoute = PUBLIC_AUTH_PATHS.some((path) => requestUrl.endsWith(path));
+
+  if (!isPublicAuthRoute) {
+    const token = localStorage.getItem('aulafacil_token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
   }
+
   return config;
 });
 

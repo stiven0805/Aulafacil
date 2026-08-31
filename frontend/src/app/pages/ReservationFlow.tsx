@@ -577,7 +577,7 @@ export function ReservationFlow() {
           {currentStep === 3 && (
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="faculty">Faculty</Label>
+                <Label htmlFor="faculty">Facultad</Label>
                 <Select
                   value={formData.faculty}
                   onValueChange={(value) =>
@@ -589,7 +589,7 @@ export function ReservationFlow() {
                       errors.faculty ? "border-red-500" : ""
                     }
                   >
-                    <SelectValue placeholder="Select your faculty" />
+                    <SelectValue placeholder="Selecciona tu facultad" />
                   </SelectTrigger>
                   <SelectContent>
                     {FACULTIES.map((faculty) => (
@@ -608,14 +608,14 @@ export function ReservationFlow() {
 
               <div className="space-y-2">
                 <Label htmlFor="numberOfPeople">
-                  Number of People
+                  Número de personas
                 </Label>
                 <Input
                   id="numberOfPeople"
                   type="number"
                   min="1"
                   max="12"
-                  placeholder="Enter number of people"
+                  placeholder="Ingresa el número de personas"
                   value={formData.numberOfPeople}
                   onChange={(e) =>
                     setFormData({
