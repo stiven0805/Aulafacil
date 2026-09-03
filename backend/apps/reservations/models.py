@@ -255,4 +255,3 @@ class Reservation(models.Model):
             f"{self.start_datetime} - {self.end_datetime}"
         )
     {}
-    
