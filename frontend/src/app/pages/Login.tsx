@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router';
 import { toast } from 'sonner';
-import { setCurrentUser } from '../lib/storage';
+import { setCurrentUser, getAllUsers, clearAllNotifications } from '../lib/storage';
 import { authApi } from '../lib/api';
 import { Mail, Lock, Eye, EyeOff, BookOpen, AlertCircle } from 'lucide-react';
 
@@ -28,11 +28,24 @@ export function Login() {
       localStorage.setItem('aulafacil_token', access);
       localStorage.setItem('aulafacil_refresh', refresh);
       
-      const is_admin = email.includes('admin');
+      // Limpiar notificaciones antiguas al iniciar sesión
+      clearAllNotifications();
       
-      const user = {
-        id: '1', 
-        studentId: '202100000',
+      // Buscar el usuario real desde el backend
+      let allUsers = [];
+      try {
+        const usersRes = await import('../lib/api').then(m => m.usersApi.getAll());
+        allUsers = usersRes.data;
+      } catch (e) {
+        console.error("No se pudo obtener la lista de usuarios:", e);
+      }
+
+      const registeredUser = allUsers.find((u: any) => u.email === email);
+      const is_admin = registeredUser?.role === 'admin' || email.includes('admin');
+      
+      const user = registeredUser || {
+        id: String(allUsers.length + 1),
+        studentId: '1234567', // fallback si falla la API
         email,
         name: email.split('@')[0],
         role: is_admin ? 'admin' : 'student',
@@ -40,7 +53,7 @@ export function Login() {
         blocked: false
       };
       
-      setCurrentUser(user as any);
+      setCurrentUser(user);
       
       if (user.role === 'admin') navigate('/admin/dashboard');
       else navigate('/app/dashboard');

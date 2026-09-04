@@ -140,13 +140,17 @@ export const isClassroomDisabled = (classroomId: string): boolean => {
 
 export const getNotifications = (userId: string): Notification[] => {
   const notificationsStr = localStorage.getItem(STORAGE_KEYS.NOTIFICATIONS);
-  const notifications = notificationsStr ? JSON.parse(notificationsStr) : mockNotifications;
+  const notifications = notificationsStr ? JSON.parse(notificationsStr) : [];
   return notifications.filter((n: Notification) => n.userId === userId);
+};
+
+export const clearAllNotifications = (): void => {
+  localStorage.removeItem(STORAGE_KEYS.NOTIFICATIONS);
 };
 
 export const markNotificationAsRead = (id: string): void => {
   const notificationsStr = localStorage.getItem(STORAGE_KEYS.NOTIFICATIONS);
-  const notifications = notificationsStr ? JSON.parse(notificationsStr) : mockNotifications;
+  const notifications = notificationsStr ? JSON.parse(notificationsStr) : [];
   const updated = notifications.map((n: Notification) =>
     n.id === id ? { ...n, read: true } : n
   );
@@ -155,7 +159,7 @@ export const markNotificationAsRead = (id: string): void => {
 
 export const addNotification = (notification: Omit<Notification, 'id' | 'createdAt'>): void => {
   const notificationsStr = localStorage.getItem(STORAGE_KEYS.NOTIFICATIONS);
-  const notifications = notificationsStr ? JSON.parse(notificationsStr) : mockNotifications;
+  const notifications = notificationsStr ? JSON.parse(notificationsStr) : [];
   const newNotification: Notification = {
     ...notification,
     id: Date.now().toString(),

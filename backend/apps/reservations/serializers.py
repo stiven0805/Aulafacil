@@ -3,6 +3,7 @@ from .models import Reservation
 from django.utils import timezone
 from datetime import timedelta
 from apps.salas.models import Sala
+from pytz import timezone as pytz_timezone
 
 class ReservationSerializer(serializers.ModelSerializer):
     sala = serializers.PrimaryKeyRelatedField(queryset=Sala.objects.all())
@@ -56,13 +57,22 @@ class ReservationSerializer(serializers.ModelSerializer):
         return data
 
     def get_date(self, obj):
-        return obj.start_datetime.date().isoformat()
+        # Convertir a zona horaria de Colombia antes de extraer la fecha
+        colombia_tz = pytz_timezone('America/Bogota')
+        local_dt = obj.start_datetime.astimezone(colombia_tz)
+        return local_dt.date().isoformat()
 
     def get_startTime(self, obj):
-        return obj.start_datetime.strftime('%H:%M')
+        # Convertir a zona horaria de Colombia
+        colombia_tz = pytz_timezone('America/Bogota')
+        local_dt = obj.start_datetime.astimezone(colombia_tz)
+        return local_dt.strftime('%H:%M')
 
     def get_endTime(self, obj):
-        return obj.end_datetime.strftime('%H:%M')
+        # Convertir a zona horaria de Colombia
+        colombia_tz = pytz_timezone('America/Bogota')
+        local_dt = obj.end_datetime.astimezone(colombia_tz)
+        return local_dt.strftime('%H:%M')
 
     def get_duration(self, obj):
         return int((obj.end_datetime - obj.start_datetime).total_seconds() / 3600)

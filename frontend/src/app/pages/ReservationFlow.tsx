@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate, useParams } from "react-router";
+import { useNavigate, useParams, useSearchParams } from "react-router";
 import { toast } from 'sonner';
 import {
   Card,
@@ -51,16 +51,22 @@ type Step = 1 | 2 | 3 | 4;
 export function ReservationFlow() {
   const navigate = useNavigate();
   const { classroomId } = useParams();
+  const [searchParams] = useSearchParams();
+
+  // Params pre-filled from Calendar
+  const preDate = searchParams.get('date') || '';
+  const preStartTime = searchParams.get('startTime') || '';
+
   const [currentStep, setCurrentStep] = useState<Step>(
-    classroomId ? 2 : 1,
+    classroomId && preDate && preStartTime ? 2 : classroomId ? 2 : 1,
   );
   const [showRulesModal, setShowRulesModal] = useState(false);
   const [user, setUser] = useState(getCurrentUser());
 
   const [formData, setFormData] = useState({
     classroomId: classroomId || "",
-    date: "",
-    startTime: "",
+    date: preDate,
+    startTime: preStartTime,
     endTime: "",
     faculty: user?.faculty || "",
     numberOfPeople: "",
@@ -98,6 +104,19 @@ export function ReservationFlow() {
         setClassrooms(mockClassrooms);
       });
   }, []);
+
+  const formatDateString = (dateStr: string) => {
+    if (!dateStr) return '';
+    // Parsear "2026-05-23" sin asumir UTC
+    const [year, month, day] = dateStr.split('-');
+    const date = new Date(Number(year), Number(month) - 1, Number(day));
+    const monthNames = [
+      'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+      'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'
+    ];
+    const dayNames = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
+    return `${dayNames[date.getDay()]}, ${Number(day)} de ${monthNames[Number(month) - 1]} de ${year}`;
+  };
 
   const calculateDuration = () => {
     if (!formData.startTime || !formData.endTime) return 0;
@@ -233,17 +252,14 @@ export function ReservationFlow() {
     setSubmitError('');
 
     try {
-      const startDatetime = new Date(
-        `${formData.date}T${formData.startTime}:00`,
-      );
-      const endDatetime = new Date(
-        `${formData.date}T${formData.endTime}:00`,
-      );
+      // Crear ISO string con offset de Colombia (-05:00)
+      const startDatetimeStr = `${formData.date}T${formData.startTime}:00-05:00`;
+      const endDatetimeStr = `${formData.date}T${formData.endTime}:00-05:00`;
 
       await reservationsApi.create({
         sala: Number(formData.classroomId),
-        start_datetime: startDatetime.toISOString(),
-        end_datetime: endDatetime.toISOString(),
+        start_datetime: startDatetimeStr,
+        end_datetime: endDatetimeStr,
         faculty: formData.faculty,
         numberOfPeople: Number(formData.numberOfPeople),
       });
@@ -259,8 +275,24 @@ export function ReservationFlow() {
       toast.success(`Reserva confirmada para ${classroom.name} el ${formData.date}`);
       setShowRulesModal(true);
     } catch (err: any) {
-      console.error(err);
-      const message = err.response?.data?.detail || err.message || 'No se pudo crear la reserva.';
+      console.error('Error creating reservation:', err);
+      console.error('Response data:', err.response?.data);
+      
+      let message = 'No se pudo crear la reserva.';
+      if (err.response?.data?.detail) {
+        message = err.response.data.detail;
+      } else if (err.response?.data) {
+        // Handle multiple field errors from DRF
+        const firstError = Object.values(err.response.data)[0];
+        if (Array.isArray(firstError)) {
+          message = firstError[0];
+        } else if (typeof firstError === 'string') {
+          message = firstError;
+        }
+      } else if (err.message) {
+        message = err.message;
+      }
+      
       setSubmitError(message);
       toast.error(message);
     } finally {
@@ -406,17 +438,16 @@ export function ReservationFlow() {
                   type="date"
                   value={formData.date}
                   onChange={(e) =>
-                    setFormData({
+                    !preDate && setFormData({
                       ...formData,
                       date: e.target.value,
                       startTime: "",
                       endTime: "",
                     })
                   }
+                  readOnly={!!preDate}
                   min={new Date().toISOString().split("T")[0]}
-                  className={
-                    errors.date ? "border-red-500" : ""
-                  }
+                  className={`${errors.date ? "border-red-500" : ""} ${preDate ? "bg-blue-50 text-blue-700 font-semibold cursor-default" : ""}`}
                 />
                 {errors.date && (
                   <p className="text-sm text-red-500">
@@ -470,8 +501,13 @@ export function ReservationFlow() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="startTime">
-                    Hora de inicio
+                    Hora de inicio{preStartTime && <span className="ml-1 text-xs text-blue-500 font-normal">(preseleccionada)</span>}
                   </Label>
+                  {preStartTime ? (
+                    <div className="flex items-center h-10 px-3 rounded-md border border-blue-200 bg-blue-50 text-blue-700 font-semibold text-sm">
+                      🕐 {preStartTime}
+                    </div>
+                  ) : (
                   <Select
                     value={formData.startTime}
                     onValueChange={(value) =>
@@ -512,6 +548,7 @@ export function ReservationFlow() {
                         ))}
                     </SelectContent>
                   </Select>
+                  )}
                   {errors.startTime && (
                     <p className="text-sm text-red-500">
                       {errors.startTime}
@@ -659,14 +696,7 @@ export function ReservationFlow() {
                       Fecha
                     </p>
                     <p className="font-semibold">
-                      {new Date(
-                        formData.date,
-                      ).toLocaleDateString("es-ES", {
-                        weekday: "long",
-                        year: "numeric",
-                        month: "long",
-                        day: "numeric",
-                      })}
+                      {formatDateString(formData.date)}
                     </p>
                   </div>
                   <div>

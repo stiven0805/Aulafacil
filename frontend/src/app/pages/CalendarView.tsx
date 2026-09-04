@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router';
 import { ChevronLeft, ChevronRight, CalendarDays, Info, Lock, CheckCircle2, XCircle, Clock } from 'lucide-react';
 import { salasApi, reservationsApi, mapReservationFromApi } from '../lib/api';
 import {
@@ -167,8 +168,8 @@ function MonthCalendar({
 // ─── Day schedule panel ──────────────────────────────────────────────────────
 
 function DaySchedule({
-  date, reservations, classrooms,
-}: { date: Date; reservations: Reservation[]; classrooms: any[] }) {
+  date, reservations, classrooms, onBook,
+}: { date: Date; reservations: Reservation[]; classrooms: any[]; onBook: (classroomId: string, date: string, startTime: string) => void }) {
   const blocked = isBlockedDay(date);
   const slots = getTimeSlotsForDate(date);
   const holiday = isHoliday(date);
@@ -313,35 +314,33 @@ function DaySchedule({
                     const res = getReservation(cls.id, time);
                     const isStart = res && res.startTime === time;
 
-                    return (
+                    return reserved ? (
                       <div
                         key={cls.id}
                         className="px-1.5 py-1.5 flex items-center justify-center"
-                        title={reserved
-                          ? `Reservado por ${res?.userName} (${res?.startTime}–${res?.endTime})`
-                          : `${cls.name} disponible a las ${formatHour(time)}`
-                        }
+                        title={`Reservado por ${res?.userName} (${res?.startTime}–${res?.endTime})`}
                       >
-                        <div
-                          className={`w-full rounded-lg px-2 py-2 text-center transition-all ${
-                            reserved
-                              ? 'bg-red-100 border border-red-200'
-                              : 'bg-green-50 border border-green-200 hover:bg-green-100'
-                          }`}
-                        >
-                          {reserved ? (
-                            <div>
-                              <div className="text-xs">🔒</div>
-                              {isStart && (
-                                <div className="text-xs text-red-600 mt-0.5 leading-tight truncate max-w-full">
-                                  {res?.userName?.split(' ')[0]}
-                                </div>
-                              )}
+                        <div className="w-full rounded-lg px-2 py-2 text-center bg-red-100 border border-red-200">
+                          <div className="text-xs">🔒</div>
+                          {isStart && (
+                            <div className="text-xs text-red-600 mt-0.5 leading-tight truncate max-w-full">
+                              {res?.userName?.split(' ')[0]}
                             </div>
-                          ) : (
-                            <div className="text-xs text-green-600">✓</div>
                           )}
                         </div>
+                      </div>
+                    ) : (
+                      <div key={cls.id} className="px-1.5 py-1.5 flex items-center justify-center">
+                        <button
+                          onClick={() => onBook(cls.id, dateStr, time)}
+                          title={`Reservar ${cls.name} a las ${formatHour(time)}`}
+                          className="w-full rounded-lg px-2 py-2 text-center bg-green-50 border border-green-200 hover:bg-green-500 hover:border-green-500 hover:text-white group transition-all cursor-pointer"
+                        >
+                          <div className="text-xs text-green-600 group-hover:text-white transition-colors">✓</div>
+                          <div className="text-xs text-green-500 group-hover:text-white mt-0.5 transition-colors hidden group-hover:block font-semibold">
+                            Reservar
+                          </div>
+                        </button>
                       </div>
                     );
                   })}
@@ -356,15 +355,11 @@ function DaySchedule({
       <div className="px-5 py-3 border-t border-gray-100 flex flex-wrap gap-4">
         <div className="flex items-center gap-2">
           <div className="w-4 h-4 rounded bg-green-50 border border-green-200" />
-          <span className="text-xs text-gray-500">Disponible</span>
+          <span className="text-xs text-gray-500">Disponible — <strong>haz clic para reservar</strong></span>
         </div>
         <div className="flex items-center gap-2">
           <div className="w-4 h-4 rounded bg-red-100 border border-red-200" />
           <span className="text-xs text-gray-500">Reservado</span>
-        </div>
-        <div className="flex items-center gap-2 ml-auto">
-          <Info className="w-3.5 h-3.5 text-gray-400" />
-          <span className="text-xs text-gray-400">Pasa el cursor sobre una celda para más detalles</span>
         </div>
       </div>
     </div>
@@ -485,6 +480,7 @@ function WeekStrip({
 
 export function CalendarView() {
   const today = new Date();
+  const navigate = useNavigate();
   const [selectedDate, setSelectedDate] = useState<Date>(today);
   const [calYear, setCalYear] = useState(today.getFullYear());
   const [calMonth, setCalMonth] = useState(today.getMonth());
@@ -526,6 +522,10 @@ export function CalendarView() {
     setSelectedDate(date);
     setCalYear(date.getFullYear());
     setCalMonth(date.getMonth());
+  }
+
+  function handleBook(classroomId: string, date: string, startTime: string) {
+    navigate(`/app/reserve/${classroomId}?date=${date}&startTime=${startTime}`);
   }
 
   return (
@@ -584,6 +584,7 @@ export function CalendarView() {
           date={selectedDate}
           reservations={reservations}
           classrooms={classrooms}
+          onBook={handleBook}
         />
       </div>
     </div>

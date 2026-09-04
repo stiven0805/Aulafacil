@@ -273,10 +273,9 @@ export function Register() {
               `}
             />
           </div>
-          {errors.studentId
-            ? <p className="flex items-center gap-1 text-xs text-red-500"><AlertCircle className="w-3 h-3" />{errors.studentId}</p>
-            : <p className="text-xs text-blue-500">Tu código de 7 a 10 dígitos asignado por la universidad</p>
-          }
+          {errors.studentId && (
+            <p className="flex items-center gap-1 text-xs text-red-500"><AlertCircle className="w-3 h-3" />{errors.studentId}</p>
+          )}
         </div>
 
         {/* Nombre completo */}

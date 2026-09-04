@@ -22,6 +22,7 @@ logger = logging.getLogger(__name__)
 
 @method_decorator(csrf_exempt, name='dispatch')
 class RegisterView(APIView):
+    authentication_classes = []
     permission_classes = [permissions.AllowAny]
 
     def post(self, request):
@@ -44,8 +45,11 @@ class RegisterView(APIView):
         try:
             user = User.objects.create_user(username=username, email=email, password=password)
             user.first_name = name
+            # Guardar el código estudiantil como último nombre (last_name)
+            student_id = request.data.get('studentId', '')
+            user.last_name = student_id
             user.save()
-            print(f"ÉXITO: Usuario {username} creado.")
+            print(f"ÉXITO: Usuario {username} creado con código: {student_id}")
             return Response({'message': 'User created successfully'}, status=status.HTTP_201_CREATED)
         except Exception as e:
             print(f"ERROR FATAL en create_user: {str(e)}")
@@ -170,9 +174,9 @@ class UserViewSet(viewsets.ReadOnlyModelViewSet):
                 'id': str(u.id),
                 'name': u.first_name or u.username,
                 'email': u.email or u.username,
+                'studentId': u.last_name or '',
                 'role': 'admin' if 'admin' in u.username else 'student',
                 'blocked': not u.is_active,
                 'faculty': 'General',
             })
         return Response(data)
-    
