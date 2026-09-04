@@ -21,23 +21,47 @@ from django.utils import timezone
 
 class Reservation(models.Model):
 
-    # Relación entre la reserva y la sala.
+    # =========================================================
+    # RELACIÓN CON LA SALA
+    # =========================================================
+
+    # Sala que será utilizada durante la reserva.
     # Si una sala es eliminada, sus reservas también se eliminan.
-    # related_name permite acceder a las reservas desde una sala.
     sala = models.ForeignKey(
         "salas.Sala",
         on_delete=models.CASCADE,
         related_name="reservations"
     )
 
-    # Relación entre la reserva y el usuario que la realiza.
-    # AUTH_USER_MODEL utiliza el modelo de usuario configurado
-    # en el proyecto Django.
+    # =========================================================
+    # USUARIO RESPONSABLE
+    # =========================================================
+
+    # Usuario registrado que crea y es responsable
+    # de la reserva.
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
         related_name="reservations"
     )
+
+    # =========================================================
+    # ESTUDIANTES REGISTRADOS
+    # =========================================================
+
+    # Usuarios registrados que participarán en la reserva.
+    #
+    # Una reserva puede tener varios estudiantes y un usuario
+    # puede participar en diferentes reservas.
+    attendees = models.ManyToManyField(
+        settings.AUTH_USER_MODEL,
+        related_name="attended_reservations",
+        blank=True
+    )
+
+    # =========================================================
+    # FECHA Y HORA
+    # =========================================================
 
     # Fecha y hora en la que comienza la reserva.
     start_datetime = models.DateTimeField()
@@ -45,12 +69,15 @@ class Reservation(models.Model):
     # Fecha y hora en la que termina la reserva.
     end_datetime = models.DateTimeField()
 
+    # =========================================================
+    # ESTADO DE LA RESERVA
+    # =========================================================
+
     # Indica si la reserva está activa.
     # Por defecto, una nueva reserva está activa.
     is_active = models.BooleanField(default=True)
 
-    # Permite controlar si ya se envió una notificación
-    # relacionada con la reserva.
+    # Indica si ya se envió la notificación correspondiente.
     notified = models.BooleanField(default=False)
 
     # Guarda automáticamente la fecha y hora
@@ -64,6 +91,10 @@ class Reservation(models.Model):
         null=True
     )
 
+    # =========================================================
+    # INFORMACIÓN DE LA RESERVA
+    # =========================================================
+
     # Facultad a la que pertenece el usuario
     # que realiza la reserva.
     faculty = models.CharField(
@@ -72,8 +103,10 @@ class Reservation(models.Model):
         default=""
     )
 
-    # Cantidad de personas que utilizarán la sala.
-    # PositiveSmallIntegerField no permite valores negativos.
+    # Cantidad TOTAL de personas que estarán en la sala.
+    #
+    # IMPORTANTE:
+    # Incluye al usuario responsable de la reserva.
     number_of_people = models.PositiveSmallIntegerField(
         default=1
     )
@@ -107,7 +140,7 @@ class Reservation(models.Model):
             )
 
         # =====================================================
-        # 2. VALIDAR LA DURACIÓN DE LA RESERVA
+        # 2. VALIDAR LA DURACIÓN
         # =====================================================
 
         # Calculamos cuánto tiempo dura la reserva.
@@ -140,8 +173,6 @@ class Reservation(models.Model):
         # se puede realizar una reserva.
         max_reservation_date = now + timedelta(days=14)
 
-        # Si la reserva está después de ese límite,
-        # no permitimos realizarla todavía.
         if self.start_datetime > max_reservation_date:
             raise ValidationError(
                 "Solo se pueden realizar reservas con máximo "
@@ -162,8 +193,8 @@ class Reservation(models.Model):
         # 6. VALIDAR CAPACIDAD DE LA SALA
         # =====================================================
 
-        # Comparamos la cantidad de personas de la reserva
-        # con la capacidad máxima de la sala.
+        # La cantidad total de personas no puede superar
+        # la capacidad máxima de la sala.
         if self.number_of_people > self.sala.capacidad:
             raise ValidationError(
                 f"La sala tiene una capacidad máxima de "
@@ -171,7 +202,7 @@ class Reservation(models.Model):
             )
 
         # =====================================================
-        # 7. VALIDAR QUE NO EXISTAN RESERVAS SOLAPADAS
+        # 7. VALIDAR RESERVAS SOLAPADAS
         # =====================================================
 
         # Buscamos reservas activas de la misma sala
@@ -196,16 +227,15 @@ class Reservation(models.Model):
 
     def save(self, *args, **kwargs):
 
-        # Ejecutamos todas las validaciones de clean()
-        # antes de guardar la reserva.
+        # Ejecutamos las validaciones antes de guardar.
         self.full_clean()
 
         # Si todas las validaciones son correctas,
-        # guardamos la reserva en la base de datos.
+        # guardamos la reserva.
         super().save(*args, **kwargs)
 
     # =========================================================
-    # CANCELAR UNA RESERVA
+    # CANCELAR LA RESERVA
     # =========================================================
 
     def cancel(self):
@@ -254,4 +284,62 @@ class Reservation(models.Model):
             f"Sala {self.sala} | "
             f"{self.start_datetime} - {self.end_datetime}"
         )
-    {}
+
+
+# =============================================================
+# ASISTENTES INVITADOS
+# =============================================================
+
+class GuestAttendee(models.Model):
+
+    # Reserva a la que pertenece el invitado.
+    reservation = models.ForeignKey(
+        Reservation,
+        on_delete=models.CASCADE,
+        related_name="guest_attendees"
+    )
+
+    # Nombre de la persona que no está registrada
+    # como usuario en AulaFácil.
+    name = models.CharField(
+        max_length=150
+    )
+
+    # =========================================================
+    # VALIDACIÓN
+    # =========================================================
+
+    def clean(self):
+
+        # El nombre del invitado no puede estar vacío.
+        if not self.name.strip():
+            raise ValidationError(
+                "El nombre del asistente invitado es obligatorio."
+            )
+
+        # No permitimos agregar un invitado cuyo nombre
+        # ya esté registrado en la misma reserva.
+        existing = GuestAttendee.objects.filter(
+            reservation=self.reservation,
+            name__iexact=self.name.strip()
+        ).exclude(pk=self.pk)
+
+        if existing.exists():
+            raise ValidationError(
+                "Este asistente invitado ya está registrado "
+                "en la reserva."
+            )
+
+    def save(self, *args, **kwargs):
+
+        # Ejecutamos las validaciones antes de guardar.
+        self.full_clean()
+
+        # Guardamos el invitado.
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+
+        # Los invitados se mostrarán como asistentes invitados.
+        return f"{self.name} - Asistente invitado"
+    

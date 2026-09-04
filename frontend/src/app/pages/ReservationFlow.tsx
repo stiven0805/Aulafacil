@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate, useParams, useSearchParams } from "react-router";
+import { useNavigate, useParams } from "react-router";
 import { toast } from 'sonner';
 import {
   Card,
@@ -29,7 +29,7 @@ import {
   getCurrentUser,
   addNotification,
 } from "../lib/storage";
-import { salasApi, reservationsApi } from '../lib/api';
+import { salasApi, reservationsApi, usersApi } from "../lib/api";
 import {
   isBlockedDay,
   isSaturday,
@@ -43,10 +43,33 @@ import {
   ArrowLeft,
   ArrowRight,
   Lock,
+  UserPlus,
+  X,
 } from "lucide-react";
 import { Classroom } from "../types";
 
 type Step = 1 | 2 | 3 | 4;
+
+/**
+ * Usuario registrado que puede ser agregado como estudiante
+ * dentro de una reserva.
+ */
+type RegisteredUser = {
+  id: number;
+  name: string;
+  email: string;
+  role: string;
+  blocked: boolean;
+  faculty?: string;
+};
+
+/**
+ * Asistente que no necesariamente tiene una cuenta
+ * registrada en AulaFácil.
+ */
+type GuestAttendee = {
+  name: string;
+};
 
 export function ReservationFlow() {
   const navigate = useNavigate();
@@ -63,6 +86,9 @@ export function ReservationFlow() {
   const [showRulesModal, setShowRulesModal] = useState(false);
   const [user, setUser] = useState(getCurrentUser());
 
+  // numberOfPeople se conserva en formData por compatibilidad con
+  // el formulario existente, pero el valor enviado al backend se calcula
+  // automáticamente mediante totalPeople.
   const [formData, setFormData] = useState({
     classroomId: classroomId || "",
     date: preDate,
@@ -74,6 +100,11 @@ export function ReservationFlow() {
   const [classrooms, setClassrooms] = useState<Classroom[]>(mockClassrooms);
   const [loading, setLoading] = useState(false);
   const [submitError, setSubmitError] = useState('');
+
+  const [registeredUsers, setRegisteredUsers] = useState<RegisteredUser[]>([]);
+  const [selectedAttendees, setSelectedAttendees] = useState<RegisteredUser[]>([]);
+  const [guestAttendees, setGuestAttendees] = useState<GuestAttendee[]>([]);
+  const [guestName, setGuestName] = useState('');
 
   const [errors, setErrors] = useState<Record<string, string>>(
     {},
@@ -103,6 +134,26 @@ export function ReservationFlow() {
       .catch(() => {
         setClassrooms(mockClassrooms);
       });
+
+    // Carga los usuarios registrados para permitir seleccionar
+    // estudiantes como asistentes de la reserva.
+    usersApi.getAll()
+      .then((response) => {
+        const currentUserId = Number(currentUser?.id);
+
+        const students = response.data.filter(
+          (item: RegisteredUser) =>
+            item.role === "student" &&
+            !item.blocked &&
+            item.id !== currentUserId
+        );
+
+        setRegisteredUsers(students);
+      })
+      .catch((error) => {
+        console.error("No se pudieron cargar los estudiantes:", error);
+        setRegisteredUsers([]);
+      });
   }, []);
 
   const formatDateString = (dateStr: string) => {
@@ -131,6 +182,118 @@ export function ReservationFlow() {
     const [y, m, d] = formData.date.split("-").map(Number);
     const date = new Date(y, m - 1, d);
     return getTimeSlotsForDate(date);
+  };
+
+  /**
+   * Total de personas de la reserva.
+   *
+   * El responsable de la reserva siempre cuenta como una persona.
+   * Por eso:
+   * 1 responsable + estudiantes + invitados = total.
+   */
+  const totalPeople =
+    1 + selectedAttendees.length + guestAttendees.length;
+
+  /**
+   * Agrega un estudiante registrado a la reserva.
+   */
+  const addStudent = (studentId: string) => {
+    const student = registeredUsers.find(
+      (item) => String(item.id) === studentId
+    );
+
+    if (!student) return;
+
+    // Evita registrar al mismo estudiante dos veces.
+    if (
+      selectedAttendees.some(
+        (item) => item.id === student.id
+      )
+    ) {
+      return;
+    }
+
+    const capacity = selectedClassroom?.capacity ?? 0;
+
+    // Se suma 1 por el estudiante que estamos intentando agregar.
+    if (
+      totalPeople + 1 > capacity
+    ) {
+      toast.error(
+        `La capacidad máxima de esta aula es de ${capacity} personas.`
+      );
+      return;
+    }
+
+    setSelectedAttendees((prev) => [...prev, student]);
+  };
+
+  /**
+   * Elimina un estudiante de la reserva.
+   */
+  const removeStudent = (studentId: number) => {
+    setSelectedAttendees((prev) =>
+      prev.filter((student) => student.id !== studentId)
+    );
+  };
+
+  /**
+   * Agrega un asistente invitado mediante su nombre.
+   */
+  const addGuest = () => {
+    const name = guestName.trim();
+
+    if (!name) {
+      toast.error("Escribe el nombre del asistente invitado.");
+      return;
+    }
+
+    // No permite repetir invitados.
+    const duplicateGuest = guestAttendees.some(
+      (guest) =>
+        guest.name.toLowerCase() === name.toLowerCase()
+    );
+
+    if (duplicateGuest) {
+      toast.error("Este asistente invitado ya está registrado.");
+      return;
+    }
+
+    // No permite que el nombre del invitado coincida
+    // con un estudiante seleccionado.
+    const studentDuplicate = selectedAttendees.some(
+      (student) =>
+        student.name.toLowerCase() === name.toLowerCase()
+    );
+
+    if (studentDuplicate) {
+      toast.error(
+        "El nombre del asistente invitado coincide con un estudiante seleccionado."
+      );
+      return;
+    }
+
+    const capacity = selectedClassroom?.capacity ?? 0;
+
+    // Se suma 1 por el nuevo invitado.
+    if (totalPeople + 1 > capacity) {
+      toast.error(
+        `La capacidad máxima de esta aula es de ${capacity} personas.`
+      );
+      return;
+    }
+
+    setGuestAttendees((prev) => [...prev, { name }]);
+    setGuestName("");
+  };
+
+  /**
+   * Elimina un asistente invitado de la reserva.
+   */
+  const removeGuest = (index: number) => {
+    setGuestAttendees((prev) =>
+      prev.filter((_, i) => i !== index)
+    );
   };
 
   const validateStep = (step: Step): boolean => {
@@ -207,18 +370,14 @@ export function ReservationFlow() {
       if (!formData.faculty) {
         newErrors.faculty = "La facultad es obligatoria";
       }
-      if (!formData.numberOfPeople) {
+
+      // La cantidad de personas ya no se escribe manualmente.
+      // Se calcula automáticamente con responsable + estudiantes + invitados.
+      const capacity = selectedClassroom?.capacity ?? 0;
+
+      if (totalPeople > capacity) {
         newErrors.numberOfPeople =
-          "El número de personas es obligatorio";
-      } else {
-        const num = parseInt(formData.numberOfPeople);
-        if (num < 1) {
-          newErrors.numberOfPeople =
-            "Debe haber al menos 1 persona";
-        } else if (num > 12) {
-          newErrors.numberOfPeople =
-            "La capacidad máxima es 12 personas";
-        }
+          `La cantidad de personas supera la capacidad máxima de ${capacity} personas.`;
       }
     }
 
@@ -261,7 +420,19 @@ export function ReservationFlow() {
         start_datetime: startDatetimeStr,
         end_datetime: endDatetimeStr,
         faculty: formData.faculty,
-        numberOfPeople: Number(formData.numberOfPeople),
+
+        // El backend recibe el total calculado automáticamente.
+        numberOfPeople: totalPeople,
+
+        // Usuarios registrados seleccionados como estudiantes.
+        attendees: selectedAttendees.map(
+          (student) => student.id
+        ),
+
+        // Personas invitadas sin cuenta registrada.
+        guestAttendees: guestAttendees.map((guest) => ({
+          name: guest.name,
+        })),
       });
 
       addNotification({
@@ -275,24 +446,8 @@ export function ReservationFlow() {
       toast.success(`Reserva confirmada para ${classroom.name} el ${formData.date}`);
       setShowRulesModal(true);
     } catch (err: any) {
-      console.error('Error creating reservation:', err);
-      console.error('Response data:', err.response?.data);
-      
-      let message = 'No se pudo crear la reserva.';
-      if (err.response?.data?.detail) {
-        message = err.response.data.detail;
-      } else if (err.response?.data) {
-        // Handle multiple field errors from DRF
-        const firstError = Object.values(err.response.data)[0];
-        if (Array.isArray(firstError)) {
-          message = firstError[0];
-        } else if (typeof firstError === 'string') {
-          message = firstError;
-        }
-      } else if (err.message) {
-        message = err.message;
-      }
-      
+      console.error(err);
+      const message = err.response?.data?.detail || err.message || 'No se pudo crear la reserva.';
       setSubmitError(message);
       toast.error(message);
     } finally {
@@ -325,11 +480,10 @@ export function ReservationFlow() {
         {[1, 2, 3, 4].map((step) => (
           <div key={step} className="flex items-center flex-1">
             <div
-              className={`flex items-center justify-center w-10 h-10 rounded-full border-2 ${
-                currentStep >= step
+              className={`flex items-center justify-center w-10 h-10 rounded-full border-2 ${currentStep >= step
                   ? "bg-[#2563eb] border-[#2563eb] text-white"
                   : "border-gray-300 text-gray-500"
-              }`}
+                }`}
             >
               {currentStep > step ? (
                 <Check className="w-5 h-5" />
@@ -339,11 +493,10 @@ export function ReservationFlow() {
             </div>
             {step < 4 && (
               <div
-                className={`flex-1 h-1 mx-2 ${
-                  currentStep > step
+                className={`flex-1 h-1 mx-2 ${currentStep > step
                     ? "bg-[#2563eb]"
                     : "bg-gray-300"
-                }`}
+                  }`}
               />
             )}
           </div>
@@ -392,11 +545,10 @@ export function ReservationFlow() {
                         classroomId: classroom.id,
                       })
                     }
-                    className={`cursor-pointer transition-all ${
-                      formData.classroomId === classroom.id
+                    className={`cursor-pointer transition-all ${formData.classroomId === classroom.id
                         ? "ring-2 ring-[#2563eb] rounded-lg"
                         : ""
-                    }`}
+                      }`}
                   >
                     <ClassroomCard
                       classroom={classroom}
@@ -508,46 +660,46 @@ export function ReservationFlow() {
                       🕐 {preStartTime}
                     </div>
                   ) : (
-                  <Select
-                    value={formData.startTime}
-                    onValueChange={(value) =>
-                      setFormData({
-                        ...formData,
-                        startTime: value,
-                        endTime: "",
-                      })
-                    }
-                    disabled={
-                      !formData.date ||
-                      (() => {
-                        const [y, m, d] = (
-                          formData.date || "2000-01-01"
-                        )
-                          .split("-")
-                          .map(Number);
-                        return isBlockedDay(
-                          new Date(y, m - 1, d),
-                        );
-                      })()
-                    }
-                  >
-                    <SelectTrigger
-                      className={
-                        errors.startTime ? "border-red-500" : ""
+                    <Select
+                      value={formData.startTime}
+                      onValueChange={(value) =>
+                        setFormData({
+                          ...formData,
+                          startTime: value,
+                          endTime: "",
+                        })
+                      }
+                      disabled={
+                        !formData.date ||
+                        (() => {
+                          const [y, m, d] = (
+                            formData.date || "2000-01-01"
+                          )
+                            .split("-")
+                            .map(Number);
+                          return isBlockedDay(
+                            new Date(y, m - 1, d),
+                          );
+                        })()
                       }
                     >
-                      <SelectValue placeholder="Seleccionar hora" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {getAvailableTimeSlots()
-                        .slice(0, -1)
-                        .map((time) => (
-                          <SelectItem key={time} value={time}>
-                            {time}
-                          </SelectItem>
-                        ))}
-                    </SelectContent>
-                  </Select>
+                      <SelectTrigger
+                        className={
+                          errors.startTime ? "border-red-500" : ""
+                        }
+                      >
+                        <SelectValue placeholder="Seleccionar hora" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {getAvailableTimeSlots()
+                          .slice(0, -1)
+                          .map((time) => (
+                            <SelectItem key={time} value={time}>
+                              {time}
+                            </SelectItem>
+                          ))}
+                      </SelectContent>
+                    </Select>
                   )}
                   {errors.startTime && (
                     <p className="text-sm text-red-500">
@@ -610,9 +762,16 @@ export function ReservationFlow() {
             </div>
           )}
 
-          {/* Step 3: Enter Details */}
+          {/* 
+            ============================================================
+            PASO 3: DATOS DE LA RESERVA Y PARTICIPANTES
+            ============================================================
+            La cantidad de personas se calcula automáticamente:
+            1 responsable + estudiantes registrados + invitados.
+          */}
           {currentStep === 3 && (
-            <div className="space-y-4">
+            <div className="space-y-6">
+              {/* Facultad */}
               <div className="space-y-2">
                 <Label htmlFor="faculty">Facultad</Label>
                 <Select
@@ -628,6 +787,7 @@ export function ReservationFlow() {
                   >
                     <SelectValue placeholder="Selecciona tu facultad" />
                   </SelectTrigger>
+
                   <SelectContent>
                     {FACULTIES.map((faculty) => (
                       <SelectItem key={faculty} value={faculty}>
@@ -636,6 +796,7 @@ export function ReservationFlow() {
                     ))}
                   </SelectContent>
                 </Select>
+
                 {errors.faculty && (
                   <p className="text-sm text-red-500">
                     {errors.faculty}
@@ -643,38 +804,207 @@ export function ReservationFlow() {
                 )}
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="numberOfPeople">
-                  Número de personas
-                </Label>
-                <Input
-                  id="numberOfPeople"
-                  type="number"
-                  min="1"
-                  max="12"
-                  placeholder="Ingresa el número de personas"
-                  value={formData.numberOfPeople}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      numberOfPeople: e.target.value,
-                    })
-                  }
-                  className={
-                    errors.numberOfPeople
-                      ? "border-red-500"
-                      : ""
-                  }
-                />
-                {errors.numberOfPeople && (
-                  <p className="text-sm text-red-500">
-                    {errors.numberOfPeople}
-                  </p>
-                )}
-                <p className="text-xs text-gray-500">
-                  Capacidad máxima: 12 personas
+              {/* Usuario responsable */}
+              <div className="rounded-lg border bg-gray-50 p-4">
+                <p className="text-sm text-gray-600">
+                  Usuario responsable
+                </p>
+                <p className="font-semibold">
+                  {user?.name}
+                </p>
+                <p className="text-xs text-gray-500 mt-1">
+                  El responsable cuenta automáticamente como 1 persona.
                 </p>
               </div>
+
+              {/* Selección de estudiantes registrados */}
+              <div className="space-y-2">
+                <Label htmlFor="student">
+                  Agregar estudiante registrado
+                </Label>
+
+                <Select
+                  onValueChange={addStudent}
+                  value=""
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecciona un estudiante" />
+                  </SelectTrigger>
+
+                  <SelectContent>
+                    {registeredUsers.length > 0 ? (
+                      registeredUsers
+                        .filter(
+                          (student) =>
+                            !selectedAttendees.some(
+                              (selected) =>
+                                selected.id === student.id
+                            )
+                        )
+                        .map((student) => (
+                          <SelectItem
+                            key={student.id}
+                            value={String(student.id)}
+                          >
+                            {student.name} — {student.email}
+                          </SelectItem>
+                        ))
+                    ) : (
+                      <SelectItem value="no-students" disabled>
+                        No hay estudiantes disponibles
+                      </SelectItem>
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Lista de estudiantes seleccionados */}
+              {selectedAttendees.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-sm font-medium">
+                    Estudiantes seleccionados
+                  </p>
+
+                  <div className="space-y-2">
+                    {selectedAttendees.map((student) => (
+                      <div
+                        key={student.id}
+                        className="flex items-center justify-between rounded-lg border p-3"
+                      >
+                        <div>
+                          <p className="font-medium">
+                            {student.name}
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            {student.email}
+                          </p>
+                        </div>
+
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() =>
+                            removeStudent(student.id)
+                          }
+                        >
+                          <X className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Agregar asistente invitado */}
+              <div className="space-y-2">
+                <Label htmlFor="guestName">
+                  Asistente invitado
+                </Label>
+
+                <div className="flex gap-2">
+                  <Input
+                    id="guestName"
+                    value={guestName}
+                    onChange={(e) =>
+                      setGuestName(e.target.value)
+                    }
+                    placeholder="Nombre del asistente invitado"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        addGuest();
+                      }
+                    }}
+                  />
+
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={addGuest}
+                  >
+                    <UserPlus className="w-4 h-4 mr-2" />
+                    Agregar
+                  </Button>
+                </div>
+
+                <p className="text-xs text-gray-500">
+                  El invitado no necesita tener una cuenta registrada.
+                </p>
+              </div>
+
+              {/* Lista de invitados */}
+              {guestAttendees.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-sm font-medium">
+                    Asistentes invitados
+                  </p>
+
+                  <div className="space-y-2">
+                    {guestAttendees.map((guest, index) => (
+                      <div
+                        key={`${guest.name}-${index}`}
+                        className="flex items-center justify-between rounded-lg border p-3"
+                      >
+                        <div>
+                          <p className="font-medium">
+                            {guest.name}
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            Asistente invitado
+                          </p>
+                        </div>
+
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() =>
+                            removeGuest(index)
+                          }
+                        >
+                          <X className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Resumen automático de capacidad */}
+              <div className="rounded-lg bg-blue-50 border border-blue-100 p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-gray-600">
+                      Personas en la reserva
+                    </p>
+                    <p className="text-2xl font-bold text-blue-700">
+                      {totalPeople}
+                    </p>
+                  </div>
+
+                  <div className="text-right">
+                    <p className="text-sm text-gray-600">
+                      Capacidad del aula
+                    </p>
+                    <p className="font-semibold">
+                      {selectedClassroom?.capacity ?? 0}
+                    </p>
+                  </div>
+                </div>
+
+                <p className="text-xs text-gray-500 mt-2">
+                  Responsable: 1 · Estudiantes:{" "}
+                  {selectedAttendees.length} · Invitados:{" "}
+                  {guestAttendees.length}
+                </p>
+              </div>
+
+              {errors.numberOfPeople && (
+                <p className="text-sm text-red-500">
+                  {errors.numberOfPeople}
+                </p>
+              )}
             </div>
           )}
 
@@ -723,9 +1053,19 @@ export function ReservationFlow() {
                       Número de personas
                     </p>
                     <p className="font-semibold">
-                      {formData.numberOfPeople} personas
+                      {totalPeople} personas
                     </p>
                   </div>
+
+                  <div>
+                    <p className="text-sm text-gray-600">
+                      Capacidad del aula
+                    </p>
+                    <p className="font-semibold">
+                      {selectedClassroom?.capacity ?? 0} personas
+                    </p>
+                  </div>
+
                   <div>
                     <p className="text-sm text-gray-600">
                       Reservado por
@@ -735,6 +1075,58 @@ export function ReservationFlow() {
                     </p>
                   </div>
                 </div>
+              </div>
+
+              {/* Resumen de participantes */}
+              <div className="rounded-lg border p-4 space-y-4">
+                <p className="font-semibold">
+                  Participantes
+                </p>
+
+                <div>
+                  <p className="text-sm text-gray-600">
+                    Responsable
+                  </p>
+                  <p className="font-medium">
+                    {user?.name}
+                  </p>
+                </div>
+
+                {selectedAttendees.length > 0 && (
+                  <div>
+                    <p className="text-sm text-gray-600 mb-2">
+                      Estudiantes
+                    </p>
+                    <ul className="space-y-1">
+                      {selectedAttendees.map((student) => (
+                        <li
+                          key={student.id}
+                          className="text-sm"
+                        >
+                          • {student.name}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {guestAttendees.length > 0 && (
+                  <div>
+                    <p className="text-sm text-gray-600 mb-2">
+                      Asistentes invitados
+                    </p>
+                    <ul className="space-y-1">
+                      {guestAttendees.map((guest, index) => (
+                        <li
+                          key={`${guest.name}-${index}`}
+                          className="text-sm"
+                        >
+                          • {guest.name}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
               </div>
 
               <Alert>
@@ -795,3 +1187,4 @@ export function ReservationFlow() {
     </div>
   );
 }
+

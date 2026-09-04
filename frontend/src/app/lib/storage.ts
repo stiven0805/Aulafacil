@@ -1,138 +1,393 @@
-import { User, Reservation, Notification } from '../types';
-import { mockUsers, mockReservations, mockNotifications } from './mockData';
+import { User, Reservation, Notification } from "../types";
+
+import {
+  mockUsers,
+  mockReservations,
+} from "./mockData";
+
+// ============================================================================
+// CLAVES DE LOCALSTORAGE
+// ============================================================================
+//
+// Todas las claves utilizadas por AulaFácil para guardar información
+// temporal/localmente en el navegador.
+// ============================================================================
 
 const STORAGE_KEYS = {
-  USER: 'aulafacil_user',
-  RESERVATIONS: 'aulafacil_reservations',
-  NOTIFICATIONS: 'aulafacil_notifications',
-  CLASSROOM_STATES: 'aulafacil_classroom_states',
-  USERS: 'aulafacil_users',
+  USER: "aulafacil_user",
+  RESERVATIONS: "aulafacil_reservations",
+  NOTIFICATIONS: "aulafacil_notifications",
+  CLASSROOM_STATES: "aulafacil_classroom_states",
+  USERS: "aulafacil_users",
 };
 
-// ─── User authentication ────────────────────────────────────────────────────
+// ============================================================================
+// AUTENTICACIÓN DEL USUARIO
+// ============================================================================
 
+/**
+ * Obtiene el usuario actualmente autenticado.
+ *
+ * El usuario se guarda en localStorage después de iniciar sesión.
+ *
+ * @returns Usuario actual o null si no existe una sesión.
+ */
 export const getCurrentUser = (): User | null => {
   const userStr = localStorage.getItem(STORAGE_KEYS.USER);
+
   return userStr ? JSON.parse(userStr) : null;
 };
 
+/**
+ * Guarda el usuario actual en localStorage.
+ *
+ * @param user Usuario que inició sesión.
+ */
 export const setCurrentUser = (user: User) => {
-  localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(user));
+  localStorage.setItem(
+    STORAGE_KEYS.USER,
+    JSON.stringify(user)
+  );
 };
 
+/**
+ * Cierra la sesión del usuario actual.
+ */
 export const logout = () => {
   localStorage.removeItem(STORAGE_KEYS.USER);
 };
 
-export const login = (email: string, password: string): User | null => {
+/**
+ * Realiza un inicio de sesión local.
+ *
+ * Primero busca al usuario entre los usuarios almacenados.
+ * Si no lo encuentra, utiliza los usuarios de prueba.
+ *
+ * @param email Correo electrónico.
+ * @param password Contraseña.
+ *
+ * @returns Usuario encontrado o null.
+ */
+export const login = (
+  email: string,
+  password: string
+): User | null => {
+  // La contraseña se mantiene como parámetro porque forma
+  // parte del flujo actual de autenticación del frontend.
+  // La autenticación real se realiza actualmente mediante el backend/JWT.
+  void password;
+
   const allUsers = getAllUsers();
-  const user = allUsers.find(u => u.email === email);
+
+  const user = allUsers.find(
+    (u) => u.email === email
+  );
+
   if (user) {
-    if (user.blocked) return null; // blocked users cannot login
+    // Los usuarios bloqueados no pueden iniciar sesión.
+    if (user.blocked) {
+      return null;
+    }
+
     setCurrentUser(user);
+
     return user;
   }
-  // fallback to mockUsers
-  const mockUser = mockUsers.find(u => u.email === email);
+
+  // Fallback para usuarios de prueba.
+  const mockUser = mockUsers.find(
+    (u) => u.email === email
+  );
+
   if (mockUser) {
     setCurrentUser(mockUser);
+
     return mockUser;
   }
+
   return null;
 };
 
-export const register = (email: string, password: string, name: string, faculty: string, studentId: string): User => {
+/**
+ * Registra un nuevo usuario localmente.
+ *
+ * @param email Correo electrónico.
+ * @param password Contraseña.
+ * @param name Nombre completo.
+ * @param faculty Facultad.
+ * @param studentId Identificación del estudiante.
+ *
+ * @returns Usuario creado.
+ */
+export const register = (
+  email: string,
+  password: string,
+  name: string,
+  faculty: string,
+  studentId: string
+): User => {
+  // La contraseña se mantiene en la firma para conservar
+  // compatibilidad con el flujo actual.
+  void password;
+
   const newUser: User = {
     id: Date.now().toString(),
     studentId,
     email,
     name,
     faculty,
-    role: 'student',
+    role: "student",
     blocked: false,
   };
-  // persist in users list
+
+  // Obtiene los usuarios existentes.
   const users = getAllUsers();
-  if (!users.find(u => u.email === email)) {
+
+  // Evita registrar dos veces el mismo correo.
+  if (!users.find((u) => u.email === email)) {
     users.push(newUser);
-    localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(users));
+
+    localStorage.setItem(
+      STORAGE_KEYS.USERS,
+      JSON.stringify(users)
+    );
   }
+
+  // Establece al nuevo usuario como usuario actual.
   setCurrentUser(newUser);
+
   return newUser;
 };
 
-// ─── User management (admin) ────────────────────────────────────────────────
+// ============================================================================
+// GESTIÓN DE USUARIOS
+// ============================================================================
 
+/**
+ * Obtiene todos los usuarios disponibles.
+ *
+ * Combina los usuarios guardados en localStorage con
+ * los usuarios mock que todavía no estén registrados.
+ */
 export const getAllUsers = (): User[] => {
-  const usersStr = localStorage.getItem(STORAGE_KEYS.USERS);
-  const storedUsers: User[] = usersStr ? JSON.parse(usersStr) : [...mockUsers];
-  // Merge with mock users to always include defaults
-  const ids = new Set(storedUsers.map(u => u.id));
+  const usersStr = localStorage.getItem(
+    STORAGE_KEYS.USERS
+  );
+
+  const storedUsers: User[] = usersStr
+    ? JSON.parse(usersStr)
+    : [...mockUsers];
+
+  // Conjunto de IDs para evitar usuarios duplicados.
+  const ids = new Set(
+    storedUsers.map((u) => u.id)
+  );
+
   const merged = [...storedUsers];
-  for (const mu of mockUsers) {
-    if (!ids.has(mu.id)) merged.push(mu);
+
+  // Agrega usuarios mock que todavía no existan.
+  for (const mockUser of mockUsers) {
+    if (!ids.has(mockUser.id)) {
+      merged.push(mockUser);
+    }
   }
+
   return merged;
 };
 
-export const blockUser = (userId: string, blocked: boolean): void => {
+/**
+ * Bloquea o desbloquea un usuario.
+ *
+ * @param userId Identificador del usuario.
+ * @param blocked true = bloqueado, false = desbloqueado.
+ */
+export const blockUser = (
+  userId: string,
+  blocked: boolean
+): void => {
   const users = getAllUsers();
-  const updated = users.map(u => u.id === userId ? { ...u, blocked } : u);
-  localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(updated));
+
+  const updated = users.map((user) =>
+    user.id === userId
+      ? { ...user, blocked }
+      : user
+  );
+
+  localStorage.setItem(
+    STORAGE_KEYS.USERS,
+    JSON.stringify(updated)
+  );
 };
 
-// ─── Reservations ───────────────────────────────────────────────────────────
+// ============================================================================
+// RESERVAS
+// ============================================================================
 
+/**
+ * Obtiene todas las reservas almacenadas localmente.
+ *
+ * Si todavía no existen reservas locales, utiliza las reservas
+ * de prueba del proyecto.
+ */
 export const getReservations = (): Reservation[] => {
-  const reservationsStr = localStorage.getItem(STORAGE_KEYS.RESERVATIONS);
-  return reservationsStr ? JSON.parse(reservationsStr) : mockReservations;
+  const reservationsStr = localStorage.getItem(
+    STORAGE_KEYS.RESERVATIONS
+  );
+
+  return reservationsStr
+    ? JSON.parse(reservationsStr)
+    : mockReservations;
 };
 
-export const addReservation = (reservation: Omit<Reservation, 'id' | 'createdAt'>): Reservation => {
+/**
+ * Crea una nueva reserva local.
+ *
+ * @param reservation Datos de la reserva sin id ni createdAt.
+ *
+ * @returns Reserva creada.
+ */
+export const addReservation = (
+  reservation: Omit<
+    Reservation,
+    "id" | "createdAt"
+  >
+): Reservation => {
   const reservations = getReservations();
+
   const newReservation: Reservation = {
     ...reservation,
+
+    // Identificador local generado automáticamente.
     id: Date.now().toString(),
+
+    // Fecha y hora reales de creación.
     createdAt: new Date().toISOString(),
   };
+
   reservations.push(newReservation);
-  localStorage.setItem(STORAGE_KEYS.RESERVATIONS, JSON.stringify(reservations));
+
+  localStorage.setItem(
+    STORAGE_KEYS.RESERVATIONS,
+    JSON.stringify(reservations)
+  );
+
   return newReservation;
 };
 
-export const cancelReservation = (id: string): void => {
+/**
+ * Cancela una reserva localmente.
+ *
+ * @param id Identificador de la reserva.
+ */
+export const cancelReservation = (
+  id: string
+): void => {
   const reservations = getReservations();
-  const updated = reservations.map(r =>
-    r.id === id ? { ...r, status: 'cancelled' as const } : r
+
+  const updated = reservations.map((reservation) =>
+    reservation.id === id
+      ? {
+        ...reservation,
+        status: "cancelled" as const,
+      }
+      : reservation
   );
-  localStorage.setItem(STORAGE_KEYS.RESERVATIONS, JSON.stringify(updated));
+
+  localStorage.setItem(
+    STORAGE_KEYS.RESERVATIONS,
+    JSON.stringify(updated)
+  );
 };
 
-export const getUserReservations = (userId: string): Reservation[] => {
+/**
+ * Obtiene las reservas pertenecientes a un usuario.
+ *
+ * @param userId Identificador del usuario.
+ */
+export const getUserReservations = (
+  userId: string
+): Reservation[] => {
   const reservations = getReservations();
-  return reservations.filter(r => r.userId === userId);
+
+  return reservations.filter(
+    (reservation) =>
+      reservation.userId === userId
+  );
 };
 
-export const getActiveReservations = (userId: string): Reservation[] => {
-  const reservations = getUserReservations(userId);
-  return reservations.filter(r => r.status === 'active');
+/**
+ * Obtiene únicamente las reservas activas de un usuario.
+ *
+ * @param userId Identificador del usuario.
+ */
+export const getActiveReservations = (
+  userId: string
+): Reservation[] => {
+  const reservations =
+    getUserReservations(userId);
+
+  return reservations.filter(
+    (reservation) =>
+      reservation.status === "active"
+  );
 };
 
-// ─── Classroom state management (admin) ────────────────────────────────────
+// ============================================================================
+// ESTADO DE LAS AULAS
+// ============================================================================
 
-export const getClassroomStates = (): Record<string, boolean> => {
-  const str = localStorage.getItem(STORAGE_KEYS.CLASSROOM_STATES);
-  return str ? JSON.parse(str) : {};
-};
+/**
+ * Obtiene el estado de las aulas.
+ *
+ * El objeto utiliza:
+ *
+ * {
+ *   "id_aula": true
+ * }
+ *
+ * donde true significa que el aula está deshabilitada.
+ */
+export const getClassroomStates =
+  (): Record<string, boolean> => {
+    const str = localStorage.getItem(
+      STORAGE_KEYS.CLASSROOM_STATES
+    );
 
-export const setClassroomDisabled = (classroomId: string, disabled: boolean): void => {
+    return str ? JSON.parse(str) : {};
+  };
+
+/**
+ * Habilita o deshabilita un aula.
+ *
+ * @param classroomId Identificador del aula.
+ * @param disabled true = deshabilitada.
+ */
+export const setClassroomDisabled = (
+  classroomId: string,
+  disabled: boolean
+): void => {
   const states = getClassroomStates();
+
   states[classroomId] = disabled;
-  localStorage.setItem(STORAGE_KEYS.CLASSROOM_STATES, JSON.stringify(states));
+
+  localStorage.setItem(
+    STORAGE_KEYS.CLASSROOM_STATES,
+    JSON.stringify(states)
+  );
 };
 
-export const isClassroomDisabled = (classroomId: string): boolean => {
+/**
+ * Comprueba si un aula está deshabilitada.
+ *
+ * @param classroomId Identificador del aula.
+ *
+ * @returns true si está deshabilitada.
+ */
+export const isClassroomDisabled = (
+  classroomId: string
+): boolean => {
   const states = getClassroomStates();
+
   return states[classroomId] === true;
 };
 
@@ -140,7 +395,7 @@ export const isClassroomDisabled = (classroomId: string): boolean => {
 
 export const getNotifications = (userId: string): Notification[] => {
   const notificationsStr = localStorage.getItem(STORAGE_KEYS.NOTIFICATIONS);
-  const notifications = notificationsStr ? JSON.parse(notificationsStr) : [];
+  const notifications = notificationsStr ? JSON.parse(notificationsStr) : mockNotifications;
   return notifications.filter((n: Notification) => n.userId === userId);
 };
 
@@ -150,47 +405,94 @@ export const clearAllNotifications = (): void => {
 
 export const markNotificationAsRead = (id: string): void => {
   const notificationsStr = localStorage.getItem(STORAGE_KEYS.NOTIFICATIONS);
-  const notifications = notificationsStr ? JSON.parse(notificationsStr) : [];
+  const notifications = notificationsStr ? JSON.parse(notificationsStr) : mockNotifications;
   const updated = notifications.map((n: Notification) =>
     n.id === id ? { ...n, read: true } : n
   );
-  localStorage.setItem(STORAGE_KEYS.NOTIFICATIONS, JSON.stringify(updated));
+
+  localStorage.setItem(
+    STORAGE_KEYS.NOTIFICATIONS,
+    JSON.stringify(updated)
+  );
 };
 
 export const addNotification = (notification: Omit<Notification, 'id' | 'createdAt'>): void => {
   const notificationsStr = localStorage.getItem(STORAGE_KEYS.NOTIFICATIONS);
-  const notifications = notificationsStr ? JSON.parse(notificationsStr) : [];
+  const notifications = notificationsStr ? JSON.parse(notificationsStr) : mockNotifications;
   const newNotification: Notification = {
     ...notification,
+
+    // Genera un ID único basado en la hora actual.
     id: Date.now().toString(),
+
+    // IMPORTANTE:
+    // Guarda la fecha y hora exactas en las que
+    // se creó esta notificación.
     createdAt: new Date().toISOString(),
   };
+
   notifications.push(newNotification);
-  localStorage.setItem(STORAGE_KEYS.NOTIFICATIONS, JSON.stringify(notifications));
+
+  localStorage.setItem(
+    STORAGE_KEYS.NOTIFICATIONS,
+    JSON.stringify(notifications)
+  );
 };
 
-// ─── Availability check ─────────────────────────────────────────────────────
+// ============================================================================
+// COMPROBACIÓN DE DISPONIBILIDAD
+// ============================================================================
 
+/**
+ * Comprueba si un aula está disponible para una fecha y horario.
+ *
+ * @param classroomId Identificador del aula.
+ * @param date Fecha de la reserva.
+ * @param startTime Hora de inicio.
+ * @param endTime Hora de finalización.
+ *
+ * @returns true si el aula está disponible.
+ */
 export const isClassroomAvailable = (
   classroomId: string,
   date: string,
   startTime: string,
   endTime: string
 ): boolean => {
-  if (isClassroomDisabled(classroomId)) return false;
+  // Un aula deshabilitada no está disponible.
+  if (isClassroomDisabled(classroomId)) {
+    return false;
+  }
 
   const reservations = getReservations();
-  const activeReservations = reservations.filter(
-    r => r.classroomId === classroomId &&
-         r.date === date &&
-         r.status === 'active'
-  );
 
+  // Obtiene únicamente reservas activas
+  // para el aula y la fecha seleccionada.
+  const activeReservations =
+    reservations.filter(
+      (reservation) =>
+        reservation.classroomId === classroomId &&
+        reservation.date === date &&
+        reservation.status === "active"
+    );
+
+  // Comprueba si existe algún solapamiento de horario.
   for (const reservation of activeReservations) {
     if (
-      (startTime >= reservation.startTime && startTime < reservation.endTime) ||
-      (endTime > reservation.startTime && endTime <= reservation.endTime) ||
-      (startTime <= reservation.startTime && endTime >= reservation.endTime)
+      // La nueva reserva comienza dentro
+      // de una reserva existente.
+      (startTime >= reservation.startTime &&
+        startTime < reservation.endTime) ||
+
+      // La nueva reserva termina dentro
+      // de una reserva existente.
+      (endTime > reservation.startTime &&
+        endTime <= reservation.endTime) ||
+
+      // La nueva reserva contiene completamente
+      // a una reserva existente.
+      (startTime <= reservation.startTime &&
+        endTime >= reservation.endTime)
     ) {
       return false;
     }
