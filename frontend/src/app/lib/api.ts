@@ -37,6 +37,8 @@ export const authApi = {
 export const salasApi = {
   getAll: () => api.get('salas/'),
   getOne: (id: string) => api.get(`salas/${id}/`),
+  setActive: (id: string, active: boolean) =>
+    api.patch(`salas/${id}/`, { activa: active }),
 };
 
 export const reservationsApi = {
@@ -48,6 +50,9 @@ export const reservationsApi = {
 
 export const usersApi = {
   getAll: () => api.get('users/'),
+  getCurrent: () => api.get('users/me/'),
+  setActive: (id: string, active: boolean) =>
+    api.patch(`users/${id}/set_active/`, { active }),
 };
 
 export const mapReservationFromApi = (reservation: any) => ({

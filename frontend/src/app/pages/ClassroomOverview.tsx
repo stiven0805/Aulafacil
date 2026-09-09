@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { salasApi, reservationsApi, mapReservationFromApi } from '../lib/api';
-import { getClassroomStates } from '../lib/storage';
 import { ClassroomCard } from '../components/ClassroomCard';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Classroom } from '../types';
@@ -23,16 +22,12 @@ export function ClassroomOverview() {
         const today = now.toISOString().split('T')[0];
         const currentHour = now.getHours();
         const currentTime = `${currentHour.toString().padStart(2, '0')}:00`;
-        const disabledStates = getClassroomStates();
         const reservations = resRes.data.map(mapReservationFromApi);
 
         const updatedClassrooms = salasRes.data.map((r: any) => {
           const classroom = {
-            id: String(r.id), name: r.nombre, capacity: r.capacidad, hasTV: false, hasWhiteboard: false, status: r.activa ? 'available' : 'disabled'
+            id: String(r.id), name: r.nombre, capacity: r.capacidad || 12, hasTV: true, hasWhiteboard: true, status: r.activa ? 'available' : 'disabled'
           };
-          if (disabledStates[classroom.id]) {
-            return { ...classroom, status: 'disabled' as const };
-          }
           const isOccupied = reservations.some((res: any) =>
             res.classroomId === classroom.id &&
             res.date === today &&
@@ -40,7 +35,14 @@ export function ClassroomOverview() {
             currentTime >= res.startTime &&
             currentTime < res.endTime
           );
-          return { ...classroom, status: isOccupied ? 'occupied' as const : 'available' as const };
+          return {
+            ...classroom,
+            status: classroom.status === 'disabled'
+              ? 'disabled' as const
+              : isOccupied
+                ? 'occupied' as const
+                : 'available' as const,
+          };
         });
 
         setClassroomStatus(updatedClassrooms);

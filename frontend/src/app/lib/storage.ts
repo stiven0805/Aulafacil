@@ -3,6 +3,7 @@ import { User, Reservation, Notification } from "../types";
 import {
   mockUsers,
   mockReservations,
+  mockNotifications,
 } from "./mockData";
 
 // ============================================================================

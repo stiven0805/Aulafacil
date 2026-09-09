@@ -17,6 +17,7 @@ from django.db import models
 # Permite obtener la fecha y hora actual
 # respetando la configuración de zona horaria de Django.
 from django.utils import timezone
+from django.contrib.auth import get_user_model
 
 
 class Reservation(models.Model):
@@ -342,4 +343,20 @@ class GuestAttendee(models.Model):
 
         # Los invitados se mostrarán como asistentes invitados.
         return f"{self.name} - Asistente invitado"
+
+
+class UserProfile(models.Model):
+
+    user = models.OneToOneField(
+        get_user_model(),
+        on_delete=models.CASCADE,
+        related_name="profile"
+    )
+
+    faculty = models.CharField(
+        max_length=120
+    )
+
+    def __str__(self):
+        return f"{self.user.username} - {self.faculty}"
     

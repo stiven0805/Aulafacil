@@ -1,4 +1,5 @@
 from rest_framework import viewsets
+from rest_framework.permissions import IsAdminUser, IsAuthenticated
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from django.utils import timezone
@@ -12,6 +13,11 @@ from apps.reservations.models import Reservation
 class SalaViewSet(viewsets.ModelViewSet):
     queryset = Sala.objects.all()
     serializer_class = SalaSerializer
+
+    def get_permissions(self):
+        if self.action in {'list', 'retrieve', 'disponibilidad'}:
+            return [IsAuthenticated()]
+        return [IsAdminUser()]
 
     @action(detail=True, methods=["get"])
     def disponibilidad(self, request, pk=None):

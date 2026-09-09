@@ -4,9 +4,6 @@ import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
 import {
   cancelReservation,
-  getClassroomStates,
-  setClassroomDisabled,
-  blockUser,
 } from '../lib/storage';
 import { salasApi, reservationsApi, usersApi, mapReservationFromApi } from '../lib/api';
 import { toast } from 'sonner';
@@ -145,11 +142,13 @@ export function AdminDashboard() {
     usersApi.getAll().then(res => setUsers(res.data));
     salasApi.getAll().then(res => {
       const rooms = res.data.map((r: any) => ({
-        id: String(r.id), name: r.nombre, capacity: r.capacidad, hasTV: false, hasWhiteboard: false, status: r.activa ? 'available' : 'disabled'
+        id: String(r.id), name: r.nombre, capacity: r.capacidad, hasTV: true, hasWhiteboard: true, status: r.activa ? 'available' : 'disabled'
       }));
       setClassrooms(rooms);
+      setClassroomStates(Object.fromEntries(
+        res.data.map((room: any) => [String(room.id), !room.activa])
+      ));
     });
-    setClassroomStates(getClassroomStates());
   }, []);
 
   useEffect(() => { reload(); }, [reload]);
@@ -202,10 +201,14 @@ export function AdminDashboard() {
       confirmClass: currentlyDisabled
         ? 'bg-green-600 hover:bg-green-700 text-white'
         : 'bg-red-600 hover:bg-red-700 text-white',
-      action: () => {
-        setClassroomDisabled(id, !currentlyDisabled);
-        reload();
-        closeConfirm();
+      action: async () => {
+        try {
+          await salasApi.setActive(id, currentlyDisabled);
+          reload();
+          closeConfirm();
+        } catch {
+          toast.error('No se pudo actualizar el estado del aula');
+        }
       },
     });
   }
@@ -238,10 +241,14 @@ export function AdminDashboard() {
       confirmClass: block
         ? 'bg-red-600 hover:bg-red-700 text-white'
         : 'bg-green-600 hover:bg-green-700 text-white',
-      action: () => {
-        blockUser(user.id, block);
-        reload();
-        closeConfirm();
+      action: async () => {
+        try {
+          await usersApi.setActive(user.id, !block);
+          reload();
+          closeConfirm();
+        } catch {
+          toast.error('No se pudo actualizar el estado del usuario');
+        }
       },
     });
   }

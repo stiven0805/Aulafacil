@@ -34,14 +34,14 @@ export function Login() {
       // Buscar el usuario real desde el backend
       let allUsers = [];
       try {
-        const usersRes = await import('../lib/api').then(m => m.usersApi.getAll());
-        allUsers = usersRes.data;
+        const userRes = await import('../lib/api').then(m => m.usersApi.getCurrent());
+        allUsers = [userRes.data];
       } catch (e) {
         console.error("No se pudo obtener la lista de usuarios:", e);
       }
 
       const registeredUser = allUsers.find((u: any) => u.email === email);
-      const is_admin = registeredUser?.role === 'admin' || email.includes('admin');
+      const is_admin = registeredUser?.role === 'admin';
       
       const user = registeredUser || {
         id: String(allUsers.length + 1),

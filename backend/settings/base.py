@@ -25,6 +25,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
+    'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -61,6 +62,7 @@ USE_I18N = True
 USE_TZ = True
 
 STATIC_URL = '/static/'
+STATIC_ROOT = BASE_DIR / 'staticfiles'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # DRF + JWT
@@ -69,7 +71,7 @@ REST_FRAMEWORK = {
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ),
     'DEFAULT_PERMISSION_CLASSES': (
-        'rest_framework.permissions.AllowAny',  # Temporalmente sin autenticación
+        'rest_framework.permissions.IsAuthenticated',
     ),
 }
 

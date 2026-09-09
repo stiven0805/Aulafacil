@@ -494,8 +494,9 @@ export function CalendarView() {
         const rooms = res.data.map((room: any) => ({
           id: String(room.id),
           name: room.nombre,
-          hasWhiteboard: false,
-          capacity: room.capacidad || 0,
+          hasTV: true,
+          hasWhiteboard: true,
+          capacity: room.capacidad || 12,
         }));
         setClassrooms(rooms);
       })

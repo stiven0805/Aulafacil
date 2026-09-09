@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   db:
     image: postgres:15
@@ -7,20 +5,23 @@ services:
     environment:
       POSTGRES_DB: aulafacil_db2
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
     ports:
-      - "5432:5432"
+      - "5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d aulafacil_db2"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
   web:
     build: .
     command: >
-      sh -c "python espera_db_run.py &&
-         python manage.py migrate &&
-         python manage.py shell -c \"from django.contrib.auth.models import User; User.objects.filter(username='admin').exists() or User.objects.create_superuser('admin','admin@example.com','admin123')\" &&
-         python create_sample_data.py &&
-         python manage.py runserver 0.0.0.0:8000"
+      sh -c "python manage.py migrate &&
+         python manage.py collectstatic --noinput &&
+         gunicorn config.wsgi:application --bind 0.0.0.0:8000"
     
 
     volumes:
@@ -28,15 +29,22 @@ services:
     ports:
       - "8000:8000"
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     environment:
-      - DJANGO_SETTINGS_MODULE=settings.local
-      - DB_NAME=aulafacil_db
+      - DJANGO_SETTINGS_MODULE=settings.production
+      - DB_NAME=aulafacil_db2
       - DB_USER=postgres
-      - DB_PASSWORD=postgres
+      - DB_PASSWORD=${DB_PASSWORD:-postgres}
       - DB_HOST=db
       - DB_PORT=5432
-      - SECRET_KEY=super-secret-key
+      - SECRET_KEY=${SECRET_KEY:?SECRET_KEY must be set}
+      - ALLOWED_HOSTS=${ALLOWED_HOSTS:-localhost,127.0.0.1}
+      - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS:-http://localhost:5173}
+      - CSRF_TRUSTED_ORIGINS=${CSRF_TRUSTED_ORIGINS:-http://localhost:5173}
+      - SECURE_SSL_REDIRECT=false
+      - SESSION_COOKIE_SECURE=false
+      - CSRF_COOKIE_SECURE=false
 
 volumes:
   postgres_data:

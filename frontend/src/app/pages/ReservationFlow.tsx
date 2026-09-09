@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate, useParams } from "react-router";
+import { useNavigate, useParams, useSearchParams } from "react-router";
 import { toast } from 'sonner';
 import {
   Card,
@@ -94,8 +94,8 @@ export function ReservationFlow() {
     date: preDate,
     startTime: preStartTime,
     endTime: "",
-    faculty: user?.faculty || "",
-    numberOfPeople: "",
+    faculty: user?.faculty && user.faculty !== "General" ? user.faculty : "",
+    numberOfPeople: "1",
   });
   const [classrooms, setClassrooms] = useState<Classroom[]>(mockClassrooms);
   const [loading, setLoading] = useState(false);
@@ -113,7 +113,11 @@ export function ReservationFlow() {
   useEffect(() => {
     const currentUser = getCurrentUser();
     setUser(currentUser);
-    if (currentUser && !formData.faculty) {
+    if (
+      currentUser &&
+      !formData.faculty &&
+      currentUser.faculty !== "General"
+    ) {
       setFormData((prev) => ({
         ...prev,
         faculty: currentUser.faculty,
@@ -124,9 +128,9 @@ export function ReservationFlow() {
         const rooms = response.data.map((room: any) => ({
           id: String(room.id),
           name: room.nombre,
-          capacity: room.capacidad,
-          hasTV: false,
-          hasWhiteboard: false,
+          capacity: room.capacidad || 12,
+          hasTV: true,
+          hasWhiteboard: true,
           status: room.activa ? 'available' : 'disabled',
         }));
         setClassrooms(rooms);
@@ -191,8 +195,7 @@ export function ReservationFlow() {
    * Por eso:
    * 1 responsable + estudiantes + invitados = total.
    */
-  const totalPeople =
-    1 + selectedAttendees.length + guestAttendees.length;
+  const totalPeople = Number(formData.numberOfPeople) || 0;
 
   /**
    * Agrega un estudiante registrado a la reserva.
@@ -371,11 +374,12 @@ export function ReservationFlow() {
         newErrors.faculty = "La facultad es obligatoria";
       }
 
-      // La cantidad de personas ya no se escribe manualmente.
-      // Se calcula automáticamente con responsable + estudiantes + invitados.
       const capacity = selectedClassroom?.capacity ?? 0;
 
-      if (totalPeople > capacity) {
+      if (totalPeople < 1) {
+        newErrors.numberOfPeople =
+          "La cantidad de personas debe ser al menos 1.";
+      } else if (totalPeople > capacity) {
         newErrors.numberOfPeople =
           `La cantidad de personas supera la capacidad máxima de ${capacity} personas.`;
       }
@@ -421,18 +425,11 @@ export function ReservationFlow() {
         end_datetime: endDatetimeStr,
         faculty: formData.faculty,
 
-        // El backend recibe el total calculado automáticamente.
+        // El backend recibe la cantidad total, sin solicitar nombres.
         numberOfPeople: totalPeople,
 
-        // Usuarios registrados seleccionados como estudiantes.
-        attendees: selectedAttendees.map(
-          (student) => student.id
-        ),
-
-        // Personas invitadas sin cuenta registrada.
-        guestAttendees: guestAttendees.map((guest) => ({
-          name: guest.name,
-        })),
+        attendees: [],
+        guestAttendees: [],
       });
 
       addNotification({
@@ -781,13 +778,10 @@ export function ReservationFlow() {
                   }
                 >
                   <SelectTrigger
-                    className={
-                      errors.faculty ? "border-red-500" : ""
-                    }
+                    className={errors.faculty ? "border-red-500" : ""}
                   >
                     <SelectValue placeholder="Selecciona tu facultad" />
                   </SelectTrigger>
-
                   <SelectContent>
                     {FACULTIES.map((faculty) => (
                       <SelectItem key={faculty} value={faculty}>
@@ -804,172 +798,27 @@ export function ReservationFlow() {
                 )}
               </div>
 
-              {/* Usuario responsable */}
-              <div className="rounded-lg border bg-gray-50 p-4">
-                <p className="text-sm text-gray-600">
-                  Usuario responsable
-                </p>
-                <p className="font-semibold">
-                  {user?.name}
-                </p>
-                <p className="text-xs text-gray-500 mt-1">
-                  El responsable cuenta automáticamente como 1 persona.
-                </p>
-              </div>
-
-              {/* Selección de estudiantes registrados */}
+              {/* Cantidad total de personas */}
               <div className="space-y-2">
-                <Label htmlFor="student">
-                  Agregar estudiante registrado
-                </Label>
-
-                <Select
-                  onValueChange={addStudent}
-                  value=""
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecciona un estudiante" />
-                  </SelectTrigger>
-
-                  <SelectContent>
-                    {registeredUsers.length > 0 ? (
-                      registeredUsers
-                        .filter(
-                          (student) =>
-                            !selectedAttendees.some(
-                              (selected) =>
-                                selected.id === student.id
-                            )
-                        )
-                        .map((student) => (
-                          <SelectItem
-                            key={student.id}
-                            value={String(student.id)}
-                          >
-                            {student.name} — {student.email}
-                          </SelectItem>
-                        ))
-                    ) : (
-                      <SelectItem value="no-students" disabled>
-                        No hay estudiantes disponibles
-                      </SelectItem>
-                    )}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Lista de estudiantes seleccionados */}
-              {selectedAttendees.length > 0 && (
-                <div className="space-y-2">
-                  <p className="text-sm font-medium">
-                    Estudiantes seleccionados
-                  </p>
-
-                  <div className="space-y-2">
-                    {selectedAttendees.map((student) => (
-                      <div
-                        key={student.id}
-                        className="flex items-center justify-between rounded-lg border p-3"
-                      >
-                        <div>
-                          <p className="font-medium">
-                            {student.name}
-                          </p>
-                          <p className="text-xs text-gray-500">
-                            {student.email}
-                          </p>
-                        </div>
-
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() =>
-                            removeStudent(student.id)
-                          }
-                        >
-                          <X className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Agregar asistente invitado */}
-              <div className="space-y-2">
-                <Label htmlFor="guestName">
-                  Asistente invitado
-                </Label>
-
-                <div className="flex gap-2">
-                  <Input
-                    id="guestName"
-                    value={guestName}
-                    onChange={(e) =>
-                      setGuestName(e.target.value)
-                    }
-                    placeholder="Nombre del asistente invitado"
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        e.preventDefault();
-                        addGuest();
-                      }
-                    }}
-                  />
-
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={addGuest}
-                  >
-                    <UserPlus className="w-4 h-4 mr-2" />
-                    Agregar
-                  </Button>
-                </div>
-
+                <Label htmlFor="numberOfPeople">Número de personas</Label>
+                <Input
+                  id="numberOfPeople"
+                  type="number"
+                  min={1}
+                  max={selectedClassroom?.capacity ?? 12}
+                  value={formData.numberOfPeople}
+                  onChange={(event) =>
+                    setFormData({
+                      ...formData,
+                      numberOfPeople: event.target.value,
+                    })
+                  }
+                  className={errors.numberOfPeople ? "border-red-500" : ""}
+                />
                 <p className="text-xs text-gray-500">
-                  El invitado no necesita tener una cuenta registrada.
+                  Indica cuántas personas asistirán. No es necesario registrar sus nombres.
                 </p>
               </div>
-
-              {/* Lista de invitados */}
-              {guestAttendees.length > 0 && (
-                <div className="space-y-2">
-                  <p className="text-sm font-medium">
-                    Asistentes invitados
-                  </p>
-
-                  <div className="space-y-2">
-                    {guestAttendees.map((guest, index) => (
-                      <div
-                        key={`${guest.name}-${index}`}
-                        className="flex items-center justify-between rounded-lg border p-3"
-                      >
-                        <div>
-                          <p className="font-medium">
-                            {guest.name}
-                          </p>
-                          <p className="text-xs text-gray-500">
-                            Asistente invitado
-                          </p>
-                        </div>
-
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() =>
-                            removeGuest(index)
-                          }
-                        >
-                          <X className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
 
               {/* Resumen automático de capacidad */}
               <div className="rounded-lg bg-blue-50 border border-blue-100 p-4">
@@ -994,9 +843,7 @@ export function ReservationFlow() {
                 </div>
 
                 <p className="text-xs text-gray-500 mt-2">
-                  Responsable: 1 · Estudiantes:{" "}
-                  {selectedAttendees.length} · Invitados:{" "}
-                  {guestAttendees.length}
+                  Límite máximo: {selectedClassroom?.capacity ?? 12} personas
                 </p>
               </div>
 

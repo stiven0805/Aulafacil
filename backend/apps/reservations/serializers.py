@@ -14,6 +14,16 @@ from django.contrib.auth import get_user_model
 # Importamos el modelo de salas.
 from apps.salas.models import Sala
 
+User = get_user_model()
+
+
+class GuestAttendeeSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = GuestAttendee
+        fields = ["name"]
+
+
 class ReservationSerializer(serializers.ModelSerializer):
 
     # =========================================================
@@ -159,12 +169,12 @@ class ReservationSerializer(serializers.ModelSerializer):
     def validate(self, data):
 
         # Obtenemos la sala seleccionada.
-        sala = data["sala"]
+        sala = data.get("sala", getattr(self.instance, "sala", None))
 
         # Obtenemos la cantidad total indicada.
         number_of_people = data.get(
             "number_of_people",
-            1
+            getattr(self.instance, "number_of_people", 1)
         )
 
         # -----------------------------------------------------
@@ -319,25 +329,19 @@ class ReservationSerializer(serializers.ModelSerializer):
         # responsable
         # + estudiantes
         # + invitados
-        total_people = (
-            1
-            + len(attendees)
-            + len(guest_attendees)
-        )
+        total_people = number_of_people
 
         # -----------------------------------------------------
         # COMPROBAR NUMBER_OF_PEOPLE
         # -----------------------------------------------------
 
-        # El número indicado debe coincidir exactamente
-        # con la cantidad de participantes.
-        if number_of_people != total_people:
+        # La cantidad total se indica directamente en la reserva.
+        # Los nombres de los asistentes son opcionales.
+        if number_of_people < 1:
 
             raise serializers.ValidationError({
                 "numberOfPeople": (
-                    "La cantidad de personas debe coincidir "
-                    "con el usuario responsable, los estudiantes "
-                    "y los asistentes invitados."
+                    "La cantidad de personas debe ser al menos 1."
                 )
             })
 
@@ -526,17 +530,17 @@ class ReservationSerializer(serializers.ModelSerializer):
     # =========================================================
 
     def get_date(self, obj):
-        return obj.start_datetime.date().isoformat()
+        return timezone.localtime(obj.start_datetime).date().isoformat()
 
     # =========================================================
     # HORA DE INICIO
     # =========================================================
 
     def get_startTime(self, obj):
-        return obj.start_datetime.strftime('%H:%M')
+        return timezone.localtime(obj.start_datetime).strftime('%H:%M')
 
     def get_endTime(self, obj):
-        return obj.end_datetime.strftime('%H:%M')
+        return timezone.localtime(obj.end_datetime).strftime('%H:%M')
 
     def get_duration(self, obj):
 
