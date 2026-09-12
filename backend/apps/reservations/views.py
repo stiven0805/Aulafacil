@@ -1,10 +1,12 @@
 import logging
 
+from django.core.exceptions import ValidationError as DjangoValidationError
 from django.utils import timezone
 from django.utils.dateparse import parse_datetime
 
 from rest_framework import status, viewsets, permissions
 from rest_framework.decorators import action
+from rest_framework.exceptions import ValidationError as DRFValidationError
 from rest_framework.response import Response
 from rest_framework.permissions import IsAdminUser, IsAuthenticated
 from rest_framework.views import APIView
@@ -31,9 +33,16 @@ class RegisterView(APIView):
         password = request.data.get('password')
         name = request.data.get('name')
         faculty = request.data.get('faculty', '').strip()
+        student_id = str(request.data.get('studentId', '')).strip()
 
-        if not username or not password:
+        if not username or not password or not student_id:
             return Response({'detail': 'Email and password are required'}, status=status.HTTP_400_BAD_REQUEST)
+
+        if not student_id.isdigit() or not 6 <= len(student_id) <= 12:
+            return Response(
+                {'detail': 'El código estudiantil debe tener entre 6 y 12 dígitos.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
         if User.objects.filter(username=username).exists():
             return Response({'detail': 'User already exists'}, status=status.HTTP_400_BAD_REQUEST)
@@ -42,7 +51,6 @@ class RegisterView(APIView):
             user = User.objects.create_user(username=username, email=email, password=password)
             user.first_name = name
             # Guardar el código estudiantil como último nombre (last_name)
-            student_id = request.data.get('studentId', '')
             user.last_name = student_id
             user.save()
             UserProfile.objects.create(user=user, faculty=faculty)
@@ -65,7 +73,11 @@ class ReservationViewSet(viewsets.ModelViewSet):
         return [IsAuthenticated()]
 
     def perform_create(self, serializer):
-        reservation = serializer.save(user=self.request.user)
+        try:
+            reservation = serializer.save(user=self.request.user)
+        except DjangoValidationError as exc:
+            detail = getattr(exc, 'message_dict', None) or exc.messages
+            raise DRFValidationError(detail)
         try:
             send_reservation_sms(reservation)
         except Exception as exc:

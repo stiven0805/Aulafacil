@@ -145,11 +145,11 @@ export function Register() {
   function validate(): boolean {
     const e: Record<string, string> = {};
 
-    // Código estudiantil: 7–10 dígitos numéricos
+    // Código estudiantil: 6–12 dígitos numéricos
     if (!form.studentId.trim()) {
       e.studentId = 'El código estudiantil es obligatorio';
-    } else if (!/^\d{7,15}$/.test(form.studentId.trim())) {
-      e.studentId = 'Debe contener entre 7 y 15 dígitos numéricos';
+    } else if (!/^\d{6,12}$/.test(form.studentId.trim())) {
+      e.studentId = 'Debe contener entre 6 y 12 dígitos numéricos';
     } else {
       // Unicidad
       const existing = getAllUsers().find(u => u.studentId === form.studentId.trim());
@@ -256,7 +256,7 @@ export function Register() {
             <input
               type="text"
               inputMode="numeric"
-              maxLength={10}
+              maxLength={12}
               value={form.studentId}
               onChange={e => {
                 // Solo dígitos
