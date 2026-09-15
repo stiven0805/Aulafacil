@@ -6,6 +6,6 @@ twilio
 psycopg2-binary
 python-dotenv
 django-cors-headers
-oracledb
 python-dateutil
 pytz
+whitenoise
